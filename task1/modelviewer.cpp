@@ -10,7 +10,11 @@
 //----------------------------------------------------------------------------------------
 
 static void qreal2glfloat(const QMatrix4x4 &in, GLfloat *out) {
+#if QT_VERSION >= 0x050000
+    const float *data = in.constData();
+#else
     const qreal *data = in.constData();
+#endif
     for (int i = 0; i < 16; ++i) out[i] = data[i];
 }
 
