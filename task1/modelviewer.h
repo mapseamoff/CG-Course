@@ -18,8 +18,14 @@ public:
     void setModel(OBJModel *m);
     void setOutlineColor(double r, double g, double b);
 
+signals:
+    void nearPlaneChanged(double val);
+    void farPlaneChanged(double val);
+
 public slots:
     void setFillMethod(int m);
+    void setNearPlane(double val);
+    void setFarPlane(double val);
 
 protected:
     void initializeGL();
@@ -40,6 +46,8 @@ private:
     GLuint shaderProgramID, mvpMatrixID, invpMatrixID;
     GLuint drawOutlineID, depthFillMethodID, outlineColorID;
     GLuint vertexBuffer, vertexBufferSize, vertexArrayID;
+    GLuint nearID, farID;
+    GLfloat pNear, pFar;
     QMatrix4x4 mProjection, mModel, mView;
     QVector3D outlineColor;
     QPoint lastMousePos;

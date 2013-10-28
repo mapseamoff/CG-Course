@@ -18,12 +18,23 @@ static void qreal2glfloat(const QMatrix4x4 &in, GLfloat *out) {
     for (int i = 0; i < 16; ++i) out[i] = data[i];
 }
 
+// We have to repack matrices from qreal to GLfloat.
+#define setUniformMatrix(func,location,value,cols,rows) \
+        { \
+        GLfloat mat[cols * rows]; \
+        const qreal *data = value.constData(); \
+        for (int i = 0; i < cols * rows; ++i) mat[i] = data[i]; \
+        func(location, 1, GL_FALSE, mat); \
+        }
+
 ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new QGLContext(fmt), parent), model(0) {
     hAngle = 0;
     vAngle = 0;
     fovVal = 45.0;
     zPos = 15;
     depthFillMethod = 0;
+    pNear = 0.1;
+    pFar = 100.0;
     outlineColor = QVector3D(0, 0, 0);
 }
 
@@ -71,11 +82,21 @@ void ModelViewer::setFillMethod(int m) {
     }
 }
 
+void ModelViewer::setNearPlane(double val) {
+    pNear = val;
+    update();
+}
+
+void ModelViewer::setFarPlane(double val) {
+    pFar = val;
+    update();
+}
+
 //----------------------------------------------------------------------------------------
 
 void ModelViewer::initializeGL() {
     if(!this->context()->isValid()) {
-        QMessageBox::critical(this, "CG Task 1", "Unable to initialize OpenGL");
+        QMessageBox::critical(this, "CG Task 1", QString("Unable to initialize OpenGL"));
         qApp->exit(-1);
     }
 
@@ -104,6 +125,8 @@ void ModelViewer::initializeGL() {
     drawOutlineID = glGetUniformLocation(shaderProgramID, "drawOutline");
     depthFillMethodID = glGetUniformLocation(shaderProgramID, "depthFillMethod");
     outlineColorID = glGetUniformLocation(shaderProgramID, "outlineColor");
+    nearID = glGetUniformLocation(shaderProgramID, "near");
+    farID = glGetUniformLocation(shaderProgramID, "far");
 }
 
 void ModelViewer::paintGL() {
@@ -121,6 +144,8 @@ void ModelViewer::paintGL() {
 
         glUniformMatrix4fv(invpMatrixID, 1, GL_FALSE, mGLInvP);
         glUniformMatrix4fv(mvpMatrixID, 1, GL_FALSE, mGLMVP);
+        glUniform1f(nearID, pNear);
+        glUniform1f(farID, pFar);
 
 //        setUniformMatrix(glUniformMatrix4fv, invpMatrixID, invP, 4, 4);
 //        setUniformMatrix(glUniformMatrix4fv, mvpMatrixID, mMVP, 4, 4);
@@ -151,7 +176,7 @@ void ModelViewer::paintGL() {
 void ModelViewer::resizeGL(int width, int height) {
     glViewport(0, 0, width, height);
     mProjection.setToIdentity();
-    mProjection.perspective(fovVal, (float)width / (float)height, 0.1f, 100.0f);
+    mProjection.perspective(fovVal, (float)width / (float)height, pNear, pFar);
 }
 
 //----------------------------------------------------------------------------------------
@@ -176,12 +201,18 @@ void ModelViewer::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void ModelViewer::wheelEvent(QWheelEvent *event) {
-    if(event->buttons() & Qt::LeftButton) {
+    if(event->buttons() & Qt::LeftButton & Qt::RightButton) {
         fovVal = std::min(std::max(fovVal - 0.05 * event->delta(), 20.0), 80.0);
         mProjection.setToIdentity();
-        mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), 0.1f, 100.0f);
+        mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
+    } else if(event->buttons() & Qt::LeftButton) {
+        pFar = std::max(0.1, std::min(pFar + 0.025 * event->delta(), 1E3));
+        emit farPlaneChanged(pFar);
+    } else if(event->buttons() & Qt::RightButton) {
+        pNear = std::max(0.1, std::min(pNear + 0.025 * event->delta(), 1E3));
+        emit nearPlaneChanged(pNear);
     } else {
-        zPos = std::min(std::max(10.0, zPos - 0.025 * event->delta()), 90.0);
+        zPos = std::min(std::max((double)pNear, zPos - 0.0125 * event->delta()), (double)pFar);
         mView.setToIdentity();
         mView.lookAt(QVector3D(0, 0, zPos), QVector3D(0, 0, 0), QVector3D(0, 1, 0));
     }
@@ -197,7 +228,7 @@ void ModelViewer::resetView() {
     zPos = 15;
 
     mProjection.setToIdentity();
-    mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), 0.1f, 100.0f);
+    mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
     mView.setToIdentity();
     mView.lookAt(QVector3D(0, 0, zPos), QVector3D(0, 0, 0), QVector3D(0, 1, 0));
     mModel.setToIdentity();

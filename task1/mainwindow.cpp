@@ -14,7 +14,7 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QGLFormat glFormat;
-    glFormat.setVersion(2, 1);
+    glFormat.setVersion(3, 3);
     glFormat.setProfile(QGLFormat::CoreProfile);
     glFormat.setSampleBuffers(true);
 
@@ -55,6 +55,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(sbG, SIGNAL(valueChanged(double)), this, SLOT(setOutlineColor()));
     connect(sbB, SIGNAL(valueChanged(double)), this, SLOT(setOutlineColor()));
 
+    sbNear = new QDoubleSpinBox(this);
+    sbNear->setRange(0.1, 1E3);
+    sbNear->setValue(0.1);
+    connect(sbNear, SIGNAL(valueChanged(double)), viewer, SLOT(setNearPlane(double)));
+
+    sbFar = new QDoubleSpinBox(this);
+    sbFar->setRange(0.1, 1E3);
+    sbFar->setValue(100.0);
+    connect(sbFar, SIGNAL(valueChanged(double)), viewer, SLOT(setFarPlane(double)));
+
+    connect(viewer, SIGNAL(nearPlaneChanged(double)), this, SLOT(updateNearPlane(double)));
+    connect(viewer, SIGNAL(farPlaneChanged(double)), this, SLOT(updateFarPlane(double)));
+
     QHBoxLayout *optLayout = new QHBoxLayout();
     optLayout->setContentsMargins(0, 0, 0, 0);
     optLayout->setSpacing(5);
@@ -67,6 +80,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     optLayout->addWidget(sbG);
     optLayout->addWidget(new QLabel("B", this));
     optLayout->addWidget(sbB);
+    optLayout->addWidget(new QLabel("| Planes: near", this));
+    optLayout->addWidget(sbNear);
+    optLayout->addWidget(new QLabel("far", this));
+    optLayout->addWidget(sbFar);
 
     QWidget *w = new QWidget(this);
     QGridLayout *layout = new QGridLayout();
@@ -100,4 +117,16 @@ void MainWindow::showModel(bool status) {
 
 void MainWindow::setOutlineColor() {
     viewer->setOutlineColor(sbR->value(), sbG->value(), sbB->value());
+}
+
+void MainWindow::updateNearPlane(double val) {
+    sbNear->blockSignals(true);
+    sbNear->setValue(val);
+    sbNear->blockSignals(false);
+}
+
+void MainWindow::updateFarPlane(double val) {
+    sbFar->blockSignals(true);
+    sbFar->setValue(val);
+    sbFar->blockSignals(false);
 }

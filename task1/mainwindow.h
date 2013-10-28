@@ -18,6 +18,8 @@ private slots:
     void loadModel();
     void showModel(bool status);
     void setOutlineColor();
+    void updateNearPlane(double val);
+    void updateFarPlane(double val);
 
 private:
     ModelViewer *viewer;
@@ -25,6 +27,7 @@ private:
 
     QProgressDialog *pdLoading;
     QDoubleSpinBox *sbR, *sbG, *sbB;
+    QDoubleSpinBox *sbNear, *sbFar;
 };
 
 #endif // MAINWINDOW_H
