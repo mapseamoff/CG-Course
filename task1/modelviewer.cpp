@@ -201,7 +201,7 @@ void ModelViewer::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void ModelViewer::wheelEvent(QWheelEvent *event) {
-    if(event->buttons() & Qt::LeftButton & Qt::RightButton) {
+    if(event->buttons() & Qt::LeftButton && event->buttons() & Qt::RightButton) {
         fovVal = std::min(std::max(fovVal - 0.05 * event->delta(), 20.0), 80.0);
         mProjection.setToIdentity();
         mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
