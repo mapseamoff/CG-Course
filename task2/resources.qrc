@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/shaders">
+        <file>fragmentShader.fsh</file>
+        <file>vertexShader.vsh</file>
+    </qresource>
+    <qresource prefix="/models">
+        <file>cube.obj</file>
+        <file>plane.obj</file>
+        <file>sphere.obj</file>
+    </qresource>
+    <qresource prefix="/textures">
+        <file>lenna_head.jpg</file>
+        <file>earth_texture_grid.bmp</file>
+    </qresource>
+</RCC>
