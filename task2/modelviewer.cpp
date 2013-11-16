@@ -39,6 +39,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     magFiltering = GL_NEAREST;
     outlineColor = QVector3D(0, 0, 0);
     drawOutline = true;
+    drawMipLevels = false;
 }
 
 ModelViewer::~ModelViewer() {
@@ -81,13 +82,13 @@ void ModelViewer::setModel(OBJModel *m) {
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m->texture.width(), m->texture.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, m->texture.bits());
+    glGenerateMipmap(GL_TEXTURE_2D);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFiltering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFiltering);
-    glGenerateMipmap(GL_TEXTURE_2D);
 
     model = m;
     resetView();
@@ -129,6 +130,11 @@ void ModelViewer::setDrawOutline(bool val) {
     update();
 }
 
+void ModelViewer::setDrawMipLevels(bool val) {
+    drawMipLevels = val;
+    update();
+}
+
 //----------------------------------------------------------------------------------------
 
 void ModelViewer::initializeGL() {
@@ -162,6 +168,7 @@ void ModelViewer::initializeGL() {
     outlineColorID = glGetUniformLocation(shaderProgramID, "outlineColor");
     samplerID = glGetUniformLocation(shaderProgramID, "texSampler");
     uvMulID = glGetUniformLocation(shaderProgramID, "uvMul");
+    drawMipLevelsID = glGetUniformLocation(shaderProgramID, "drawMipLevels");
 }
 
 void ModelViewer::paintGL() {
@@ -187,6 +194,7 @@ void ModelViewer::paintGL() {
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glUniform1i(drawOutlineID, 0);
+        glUniform1i(drawMipLevelsID, isDrawMipLevelsEnabled());
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -253,6 +261,11 @@ void ModelViewer::wheelEvent(QWheelEvent *event) {
 }
 
 //----------------------------------------------------------------------------------------
+
+int ModelViewer::isDrawMipLevelsEnabled() const {
+    if(minFiltering != GL_NEAREST && minFiltering != GL_LINEAR && drawMipLevels) return 1;
+    return 0;
+}
 
 void ModelViewer::resetView() {
     hAngle = 0;

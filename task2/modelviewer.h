@@ -25,6 +25,7 @@ public slots:
     void setTexCoordsMultiplier(double val);
     void setFilteringType(int ft);
     void setDrawOutline(bool val);
+    void setDrawMipLevels(bool val);
 
 protected:
     void initializeGL();
@@ -40,12 +41,14 @@ private:
     GLuint createShaders(const QString &vshFile, const QString &fshFile) const;
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
     void resetView();
+    int isDrawMipLevelsEnabled() const;
 
     OBJModel *model;
     GLuint shaderProgramID, mvpMatrixID, samplerID, textureID;
     GLuint drawOutlineID, outlineColorID, uvMulID;
     GLuint vertexBuffer, vertexBufferSize, vertexArrayID;
     GLuint uvBuffer;
+    GLuint drawMipLevelsID;
     GLint minFiltering, magFiltering;
     GLfloat pNear, pFar, uvMul;
     QMatrix4x4 mProjection, mModel, mView;
@@ -53,7 +56,7 @@ private:
     QPoint lastMousePos;
     float hAngle, vAngle;
     float fovVal, zPos;
-    bool drawOutline;
+    bool drawOutline, drawMipLevels;
 
 };
 

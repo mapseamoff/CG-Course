@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QDoubleSpinBox>
 #include <QComboBox>
+#include <QCheckBox>
 
 #include "modelviewer.h"
 #include "objmodel.h"
@@ -26,6 +27,7 @@ private:
     QComboBox *cbModels, *cbFiltering;
     QDoubleSpinBox *sbR, *sbG, *sbB;
     QDoubleSpinBox *sbM;
+    QCheckBox *ckbDrawMipLevels;
 
 };
 
