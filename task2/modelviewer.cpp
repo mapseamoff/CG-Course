@@ -40,6 +40,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     outlineColor = QVector3D(0, 0, 0);
     drawOutline = true;
     drawMipLevels = false;
+    drawRealMipmap = false;
 }
 
 ModelViewer::~ModelViewer() {
@@ -47,6 +48,7 @@ ModelViewer::~ModelViewer() {
     glDeleteBuffers(1, &vertexBuffer);
     glDeleteBuffers(1, &uvBuffer);
     glDeleteTextures(1, &textureID);
+    glDeleteTextures(1, &mipmapTextureID);
     glDeleteProgram(shaderProgramID);
     glDeleteVertexArrays(1, &vertexArrayID);
 }
@@ -95,6 +97,21 @@ void ModelViewer::setModel(OBJModel *m) {
     update();
 }
 
+void ModelViewer::generateRealMipmap() {
+    glGenTextures(1, &mipmapTextureID);
+    glBindTexture(GL_TEXTURE_2D, mipmapTextureID);
+    for(int i = 0, sz = 256; i < 8; ++i, sz /= 2) {
+        QImage img(sz, sz, QImage::Format_RGB888);
+        img.fill(QColor(32 * i, 32 * i, 32 * i));
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, img.bits());
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 7);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFiltering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFiltering);
+}
+
 void ModelViewer::setMeshColor(QVector3D mc) {
     outlineColor = mc;
     update();
@@ -110,12 +127,6 @@ void ModelViewer::setFilteringType(int ft) {
     case GL_NEAREST: case GL_LINEAR:
         magFiltering = ft;
         break;
-//    case GL_NEAREST_MIPMAP_NEAREST: case GL_LINEAR_MIPMAP_NEAREST:
-//        magFiltering = GL_NEAREST;
-//        break;
-//    case GL_NEAREST_MIPMAP_LINEAR: case GL_LINEAR_MIPMAP_LINEAR:
-//        magFiltering = GL_LINEAR;
-//        break;
     default:
         magFiltering = GL_LINEAR;
     }
@@ -132,6 +143,15 @@ void ModelViewer::setDrawOutline(bool val) {
 
 void ModelViewer::setDrawMipLevels(bool val) {
     drawMipLevels = val;
+    update();
+}
+
+void ModelViewer::setDrawRealMipmap(bool val) {
+    drawRealMipmap = val;
+    if(val) glBindTexture(GL_TEXTURE_2D, mipmapTextureID);
+    else glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFiltering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFiltering);
     update();
 }
 
@@ -169,6 +189,8 @@ void ModelViewer::initializeGL() {
     samplerID = glGetUniformLocation(shaderProgramID, "texSampler");
     uvMulID = glGetUniformLocation(shaderProgramID, "uvMul");
     drawMipLevelsID = glGetUniformLocation(shaderProgramID, "drawMipLevels");
+
+    generateRealMipmap();
 }
 
 void ModelViewer::paintGL() {
@@ -184,13 +206,11 @@ void ModelViewer::paintGL() {
         glUniformMatrix4fv(mvpMatrixID, 1, GL_FALSE, mGLMVP);
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
+        if(drawRealMipmap) glBindTexture(GL_TEXTURE_2D, mipmapTextureID);
+        else glBindTexture(GL_TEXTURE_2D, textureID);
         glUniform1i(samplerID, 0);
 
         glUniform1f(uvMulID, uvMul);
-
-//        setUniformMatrix(glUniformMatrix4fv, invpMatrixID, invP, 4, 4);
-//        setUniformMatrix(glUniformMatrix4fv, mvpMatrixID, mMVP, 4, 4);
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glUniform1i(drawOutlineID, 0);

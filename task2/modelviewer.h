@@ -26,6 +26,7 @@ public slots:
     void setFilteringType(int ft);
     void setDrawOutline(bool val);
     void setDrawMipLevels(bool val);
+    void setDrawRealMipmap(bool val);
 
 protected:
     void initializeGL();
@@ -42,9 +43,10 @@ private:
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
     void resetView();
     int isDrawMipLevelsEnabled() const;
+    void generateRealMipmap();
 
     OBJModel *model;
-    GLuint shaderProgramID, mvpMatrixID, samplerID, textureID;
+    GLuint shaderProgramID, mvpMatrixID, samplerID, textureID, mipmapTextureID;
     GLuint drawOutlineID, outlineColorID, uvMulID;
     GLuint vertexBuffer, vertexBufferSize, vertexArrayID;
     GLuint uvBuffer;
@@ -56,7 +58,7 @@ private:
     QPoint lastMousePos;
     float hAngle, vAngle;
     float fovVal, zPos;
-    bool drawOutline, drawMipLevels;
+    bool drawOutline, drawMipLevels, drawRealMipmap;
 
 };
 

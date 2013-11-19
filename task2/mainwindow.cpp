@@ -58,10 +58,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(ckbDrawMesh, SIGNAL(toggled(bool)), viewer, SLOT(setDrawOutline(bool)));
 //    connect(ckbDrawMesh, SIGNAL(toggled(bool)), cpMeshColor, SLOT(setEnabled(bool)));
 
-    ckbDrawMipLevels = new QCheckBox("Show mip levels", this);
+    ckbDrawMipLevels = new QCheckBox("Show computed mip levels", this);
     ckbDrawMipLevels->setChecked(false);
     ckbDrawMipLevels->setEnabled(false);
     connect(ckbDrawMipLevels, SIGNAL(toggled(bool)), viewer, SLOT(setDrawMipLevels(bool)));
+
+    QCheckBox *ckbDrawMipmapTexture = new QCheckBox("Show real mipmap texture", this);
+    ckbDrawMipmapTexture->setChecked(false);
+    connect(ckbDrawMipmapTexture, SIGNAL(toggled(bool)), viewer, SLOT(setDrawRealMipmap(bool)));
 
     QGroupBox *gbOptions = new QGroupBox("Options", this);
     QGridLayout *optLayout = new QGridLayout();
@@ -77,8 +81,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     optLayout->addWidget(cbFiltering, 2, 1);
     optLayout->addWidget(ckbDrawMesh, 3, 0);
     optLayout->addWidget(cpMeshColor, 3, 1, Qt::AlignRight);
-    optLayout->addWidget(ckbDrawMipLevels, 4, 0, 1, 2);
-    optLayout->setRowStretch(5, 1);
+    optLayout->addWidget(ckbDrawMipmapTexture, 4, 0, 1, 2);
+    optLayout->addWidget(ckbDrawMipLevels, 5, 0, 1, 2);
+    optLayout->setRowStretch(6, 1);
     gbOptions->setLayout(optLayout);
 
     QWidget *w = new QWidget(this);
