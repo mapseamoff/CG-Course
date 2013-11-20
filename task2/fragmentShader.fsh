@@ -16,7 +16,8 @@ void main() {
         } else {
             ivec2 texSize = textureSize(texSampler, 0);
 
-            float q = log2(texSize.x);
+            float q = log2(max(texSize.x, texSize.y));
+            float step = 1.0f / q;
             float dudx = texSize.x * dFdx(UV.x);
             float dudy = texSize.y * dFdy(UV.x);
             float dvdx = texSize.x * dFdx(UV.y);
@@ -31,7 +32,7 @@ void main() {
                 //as in opengl spec
                 level = ceil(level + 0.5) - 1.0;
                 //assume there is only 8 levels in texture :)
-                color = vec3(0.125*level, 0.125*level, 0.125*level);
+                color = vec3(step*level, step*level, step*level);
             } else {
                 color = vec3(1, 1, 1); //max level
             }

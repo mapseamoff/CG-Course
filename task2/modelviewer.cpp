@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QMessageBox>
+#include <qmath.h>
 
 #include <iostream>
 
@@ -105,12 +106,16 @@ void ModelViewer::generateRealMipmap(int w, int h) {
     }
     glGenTextures(1, &mipmapTextureID);
     glBindTexture(GL_TEXTURE_2D, mipmapTextureID);
-    for(int i = 0, szw = w, szh = h; i < 8; ++i, szw /= 2, szh /= 2) {
+    int i = 0;
+    float maxLevels = log2(qMax(w, h));
+    int step = 255 / maxLevels;
+    for(int szw = w, szh = h; i <= maxLevels; ++i, szw = qMax(szw / 2, 1), szh = qMax(szh / 2, 1)) {
         QImage img(szw, szh, QImage::Format_RGB888);
-        img.fill(QColor(32 * i, 32 * i, 32 * i));
+        int c = qMin(255, step * i);
+        img.fill(QColor(c, c, c));
         glTexImage2D(GL_TEXTURE_2D, i, GL_RGB, szw, szh, 0, GL_RGB, GL_UNSIGNED_BYTE, img.bits());
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 7);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, i);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFiltering);
