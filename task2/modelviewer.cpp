@@ -92,18 +92,23 @@ void ModelViewer::setModel(OBJModel *m) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFiltering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFiltering);
 
+    generateRealMipmap(m->texture.width(), m->texture.height());
+
     model = m;
     resetView();
     update();
 }
 
-void ModelViewer::generateRealMipmap() {
+void ModelViewer::generateRealMipmap(int w, int h) {
+    if(model) {
+        glDeleteTextures(1, &mipmapTextureID);
+    }
     glGenTextures(1, &mipmapTextureID);
     glBindTexture(GL_TEXTURE_2D, mipmapTextureID);
-    for(int i = 0, sz = 256; i < 8; ++i, sz /= 2) {
-        QImage img(sz, sz, QImage::Format_RGB888);
+    for(int i = 0, szw = w, szh = h; i < 8; ++i, szw /= 2, szh /= 2) {
+        QImage img(szw, szh, QImage::Format_RGB888);
         img.fill(QColor(32 * i, 32 * i, 32 * i));
-        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, img.bits());
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB, szw, szh, 0, GL_RGB, GL_UNSIGNED_BYTE, img.bits());
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 7);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -190,7 +195,7 @@ void ModelViewer::initializeGL() {
     uvMulID = glGetUniformLocation(shaderProgramID, "uvMul");
     drawMipLevelsID = glGetUniformLocation(shaderProgramID, "drawMipLevels");
 
-    generateRealMipmap();
+//    generateRealMipmap(225, 225);
 }
 
 void ModelViewer::paintGL() {

@@ -43,7 +43,7 @@ private:
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
     void resetView();
     int isDrawMipLevelsEnabled() const;
-    void generateRealMipmap();
+    void generateRealMipmap(int w, int h);
 
     OBJModel *model;
     GLuint shaderProgramID, mvpMatrixID, samplerID, textureID, mipmapTextureID;

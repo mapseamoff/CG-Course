@@ -63,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     ckbDrawMipLevels->setEnabled(false);
     connect(ckbDrawMipLevels, SIGNAL(toggled(bool)), viewer, SLOT(setDrawMipLevels(bool)));
 
-    QCheckBox *ckbDrawMipmapTexture = new QCheckBox("Show real mipmap texture", this);
+    QCheckBox *ckbDrawMipmapTexture = new QCheckBox("Show real mip levels", this);
     ckbDrawMipmapTexture->setChecked(false);
     connect(ckbDrawMipmapTexture, SIGNAL(toggled(bool)), viewer, SLOT(setDrawRealMipmap(bool)));
 
