@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/shaders">
+        <file>fragmentShader.fsh</file>
+        <file>vertexShader.vsh</file>
+        <file>geometryShader.geom</file>
+    </qresource>
+    <qresource prefix="/models">
+        <file>bunny_n.obj</file>
+    </qresource>
+</RCC>
