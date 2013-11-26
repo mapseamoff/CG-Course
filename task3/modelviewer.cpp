@@ -40,6 +40,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     zPos = 10;
     pNear = 0.1;
     pFar = 100.0;
+    mScale = 5.0;
     outlineColor = QVector3D(0, 0, 0);
     drawOutline = true;
     drawMipLevels = false;
@@ -295,6 +296,7 @@ void ModelViewer::mouseMoveEvent(QMouseEvent *event) {
     mModel.rotate(hAngle, QVector3D(0, 1, 0));
 //    mModel.rotate(vAngle, QVector3D(cos(hAngle/180.0*M_PI) < 0 ? -1 : 1, 0, 0));
     mModel.rotate(vAngle, QVector3D(1, 0, 0));
+    mModel.scale(mScale);
 
     update();
 
@@ -302,10 +304,16 @@ void ModelViewer::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void ModelViewer::wheelEvent(QWheelEvent *event) {
-    if(event->buttons() & Qt::LeftButton) {
+    if(event->buttons() & Qt::RightButton) {
         fovVal = std::min(std::max(fovVal - 0.05 * event->delta(), 10.0), 90.0);
         mProjection.setToIdentity();
         mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
+    } else if(event->buttons() & Qt::LeftButton) {
+        mScale = qMax(1.0, qMin(100.0, mScale + 0.05 * event->delta()));
+        mModel.setToIdentity();
+        mModel.rotate(hAngle, QVector3D(0, 1, 0));
+        mModel.rotate(vAngle, QVector3D(1, 0, 0));
+        mModel.scale(mScale);
     } else {
         zPos = std::min(std::max((double)pNear, zPos - 0.0025 * event->delta()), (double)pFar);
         mView.setToIdentity();
@@ -320,13 +328,15 @@ void ModelViewer::resetView() {
     hAngle = 0;
     vAngle = 0;
     fovVal = 60.0;
-    zPos = 1;
+    zPos = 4;
+    mScale = 5.0;
 
     mProjection.setToIdentity();
     mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
     mView.setToIdentity();
     mView.lookAt(QVector3D(0, 0, zPos), QVector3D(0, 0, 0), QVector3D(0, 1, 0));
     mModel.setToIdentity();
+    mModel.scale(mScale);
 }
 
 QString ModelViewer::readFile(const QString &fileName) const {

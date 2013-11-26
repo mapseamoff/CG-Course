@@ -66,7 +66,7 @@ private:
     QVector3D outlineColor, ambientColor, diffuseColor, specularColor;
     QVector3D lightPosition, lightColor, lightDirection;
     QPoint lastMousePos;
-    float hAngle, vAngle;
+    float hAngle, vAngle, mScale;
     float fovVal, zPos;
     bool drawOutline, drawMipLevels, drawRealMipmap;
     int fillMethod, shadingMethod, spotMethod;
