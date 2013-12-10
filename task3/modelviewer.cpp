@@ -70,6 +70,9 @@ void ModelViewer::setModel(OBJModel *m) {
         glDeleteBuffers(1, &normalsBuffer);
     }
 
+    model = m;
+    model->moveToMassCenter();
+
     std::vector<OBJVec3> vs, ns;
     std::vector<OBJVec2> ts;
     for(std::vector<OBJFace>::iterator fi = m->faces.begin(); fi != m->faces.end(); ++fi) {
@@ -90,8 +93,29 @@ void ModelViewer::setModel(OBJModel *m) {
     glBindBuffer(GL_ARRAY_BUFFER, normalsBuffer);
     glBufferData(GL_ARRAY_BUFFER, ns.size() * sizeof(OBJVec3), &ns[0], GL_STATIC_DRAW);
 
-    model = m;
     resetView();
+    update();
+}
+
+void ModelViewer::setLighModel(OBJModel *lm) {
+    if(lightModel) {
+        glDeleteBuffers(1, &lightVertexBuffer);
+    }
+
+    lightModel = lm;
+
+    std::vector<OBJVec3> vs;
+    for(std::vector<OBJFace>::iterator fi = lm->faces.begin(); fi != lm->faces.end(); ++fi) {
+        for(OBJFace::iterator fii = fi->begin(); fii != fi->end(); ++fii) {
+            vs.push_back(lm->verts[fii->v - 1]);
+        }
+    }
+    glGenBuffers(1, &lightVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, lightVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vs.size() * sizeof(OBJVec3), &vs[0], GL_STATIC_DRAW);
+    lightVertexBufferSize = vs.size();
+
+    updateLight();
     update();
 }
 
@@ -132,6 +156,7 @@ void ModelViewer::setLightColor(QVector3D c) {
 
 void ModelViewer::setLightPosition(QVector3D p) {
     lightPosition = p;
+    updateLight();
     update();
 }
 
@@ -147,21 +172,26 @@ void ModelViewer::setShadingMethod(int m) {
 
 void ModelViewer::setLightPower(double p) {
     lightPower = p;
+    updateLight();
     update();
 }
 
-void ModelViewer::setLightDirection(QVector3D p) {
-    lightDirection = p;
+void ModelViewer::setLightDirection(QVector3D p, QVector3D d) {
+    lightPointsAt = p;
+    lightDirection = d;
+    updateLight();
     update();
 }
 
 void ModelViewer::setLightCutoff(double angle) {
     lightAngle = cos(M_PI * angle / 180.0);
+    updateLight();
     update();
 }
 
 void ModelViewer::setLightExponent(double e) {
     lightExponent = e;
+    updateLight();
     update();
 }
 
@@ -272,6 +302,20 @@ void ModelViewer::paintGL() {
             glDisable(GL_POLYGON_OFFSET_FILL);
             glDisableVertexAttribArray(0);
         }
+
+        QMatrix4x4 mlMVP = mProjection * mView * mLightModel;
+        setUniformMatrix(glUniformMatrix4fv, mvpMatrixID, mlMVP, 4, 4);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glUniform1i(drawOutlineID, 1);
+        setUniformVector3f(outlineColorID, lightColor);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, lightVertexBuffer);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glDrawArrays(GL_TRIANGLES, 0, lightVertexBufferSize);
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDisableVertexAttribArray(0);
     }
 }
 
@@ -338,6 +382,41 @@ void ModelViewer::resetView() {
     mModel.setToIdentity();
     mModel.scale(mScale);
 }
+
+QQuaternion ModelViewer::rotationBetweenVectors(const QVector3D &start, const QVector3D &dest) const {
+    QVector3D _start = start.normalized();
+    QVector3D _dest = dest.normalized();
+
+    float cosTheta = QVector3D::dotProduct(_start, _dest);
+    if(cosTheta < -1 + 0.001) {
+        QVector3D rotationAxis = QVector3D::crossProduct(QVector3D(0, 0, 1), _start);
+        if (rotationAxis.lengthSquared() < 0.01 ) {
+            rotationAxis = QVector3D::crossProduct(QVector3D(1, 0, 0), _start);
+        }
+        return QQuaternion::fromAxisAndAngle(rotationAxis.normalized(), 180.0);
+    }
+
+    QVector3D rotationAxis = QVector3D::crossProduct(_start, _dest);
+
+    float s = sqrt((1 + cosTheta) * 2);
+    float invs = 1 / s;
+
+    return QQuaternion(s * 0.5f, rotationAxis.x() * invs, rotationAxis.y() * invs, rotationAxis.z() * invs);
+}
+
+void ModelViewer::updateLight() {
+    mLightModel.setToIdentity();
+    mLightModel.rotate(rotationBetweenVectors(QVector3D(0, 0, -1), lightDirection));
+
+    QVector4D realPos = lightPosition.toVector4D();
+    realPos.setW(1.0);
+    mLightModel.setColumn(3, realPos);
+    double maxDist = sqrt(lightPower / 0.004);
+    double r = tan(acos(lightAngle)) * maxDist;
+    mLightModel.scale(r, r, maxDist);
+}
+
+//----------------------------------------------------------------------------------------
 
 QString ModelViewer::readFile(const QString &fileName) const {
     QFile file(fileName);

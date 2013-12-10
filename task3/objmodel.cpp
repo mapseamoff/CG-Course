@@ -30,7 +30,23 @@ void OBJModel::progressSignal(int val) {
 }
 
 void OBJModel::loadingFinished() {
+    massCenter = calcMassCenter();
     emit loadStatus(loader->modelStatus);
+}
+
+void OBJModel::moveToMassCenter() {
+    for(std::vector<OBJVec3>::iterator v = verts.begin(); v != verts.end(); ++v) {
+        *v -= massCenter;
+    }
+}
+
+OBJVec3 OBJModel::calcMassCenter() const {
+    OBJVec3 mc;
+    for(std::vector<OBJVec3>::const_iterator v = verts.begin(); v != verts.end(); ++v) {
+        mc += *v;
+    }
+    mc /= (GLfloat)verts.size();
+    return mc;
 }
 
 /**************************************************************************************/

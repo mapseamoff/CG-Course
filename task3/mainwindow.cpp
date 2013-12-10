@@ -20,6 +20,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     model->loadModel(":/models/bunny_n.obj");
     connect(model, SIGNAL(loadStatus(bool)), this, SLOT(showModel(bool)));
 
+    lightModel = new OBJModel(this);
+    lightModel->loadModel(":/models/cone.obj");
+    connect(lightModel, SIGNAL(loadStatus(bool)), this, SLOT(showModel(bool)));
+
     cbShading = new QComboBox(this);
     cbShading->addItem("Phong");
     cbShading->addItem("Blinn-Phong");
@@ -74,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     pwLightPos = new PositionWidget(-99.0, 99.0, 4.0, "Position:", this);
     pwLightPos->setSingleStep(0.1);
-    connect(pwLightPos, SIGNAL(valueChanged(QVector3D)), viewer, SLOT(setLightPosition(QVector3D)));
+    connect(pwLightPos, SIGNAL(valueChanged(QVector3D)), this, SLOT(setLightPosition(QVector3D)));
 
     pwLightDir = new PositionWidget(-99.0, 99.0, 0.0, "Points at:", this);
     pwLightDir->setSingleStep(0.05);
@@ -147,18 +151,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 void MainWindow::showModel(bool status) {
     if(!status) QMessageBox::critical(this, "CG Task 3", "Unable to load model");
-    else {
+    else if(model->status() && lightModel->status()) {
         viewer->setAmbientColor(cpAmbient->getColorF());
         viewer->setDiffuseColor(cpDiffuse->getColorF());
         viewer->setSpecularColor(cpSpecular->getColorF());
         viewer->setLightColor(cpLight->getColorF());
         viewer->setLightCutoff(sbSA->value());
         viewer->setModel(model);
+        viewer->setLighModel(lightModel);
     }
 }
 
+void MainWindow::setLightPosition(QVector3D lpos) {
+    viewer->setLightPosition(lpos);
+    viewer->setLightDirection(pwLightDir->getValue(), pwLightDir->getValue() - lpos);
+}
+
 void MainWindow::setLightDirection(QVector3D point) {
-    viewer->setLightDirection(point - pwLightPos->getValue());
+    viewer->setLightDirection(point, point - pwLightPos->getValue());
 }
 
 //----------------------------------------------------------------------------

@@ -6,11 +6,35 @@
 #include <QObject>
 #include <QThread>
 #include <QImage>
+#include <QVector3D>
 
 #include <vector>
 #include <string>
 
 struct OBJVec3 {
+    OBJVec3() : x(0.0), y(0.0), z(0.0) {}
+
+    OBJVec3& operator+=(const OBJVec3 &other) {
+        this->x += other.x;
+        this->y += other.y;
+        this->z += other.z;
+        return *this;
+    }
+
+    OBJVec3& operator-=(const OBJVec3 &other) {
+        this->x -= other.x;
+        this->y -= other.y;
+        this->z -= other.z;
+        return *this;
+    }
+
+    OBJVec3& operator/=(const GLfloat &val) {
+        this->x /= val;
+        this->y /= val;
+        this->z /= val;
+        return *this;
+    }
+
     GLfloat x;
     GLfloat y;
     GLfloat z;
@@ -73,9 +97,12 @@ public:
     void loadModel(const QString &filePath, const QString &texPath = "");
     QString modelError() const { return loader->modelError; }
 
+    void moveToMassCenter();
+
     std::vector<OBJFace> faces;
     std::vector<OBJVec3> verts, texs, norms;
     QImage texture;
+    OBJVec3 massCenter;
 
 signals:
     void loadProgress(int val);
@@ -89,6 +116,8 @@ private slots:
     void loadingFinished();
 
 private:
+    OBJVec3 calcMassCenter() const;
+
     OBJModelLoadingThread *loader;
 };
 

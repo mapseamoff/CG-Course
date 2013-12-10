@@ -6,5 +6,6 @@
     </qresource>
     <qresource prefix="/models">
         <file>bunny_n.obj</file>
+        <file>cone.obj</file>
     </qresource>
 </RCC>

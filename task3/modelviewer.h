@@ -16,6 +16,7 @@ public:
     ~ModelViewer();
 
     void setModel(OBJModel *m);
+    void setLighModel(OBJModel *lm);
 
 signals:
     void uvMultiplierChanged(double val);
@@ -28,7 +29,7 @@ public slots:
     void setSpecularColor(QVector3D c);
     void setSpecularPower(double p);
     void setLightPosition(QVector3D p);
-    void setLightDirection(QVector3D p);
+    void setLightDirection(QVector3D p, QVector3D d);
     void setLightCutoff(double angle);
     void setLightExponent(double e);
     void setLightPower(double p);
@@ -48,12 +49,14 @@ protected:
 
 private:
     QString readFile(const QString &fileName) const;
-//    void createIncludeFile(const QString &fileName, const QString &openglName) const;
     GLuint createShaders(const QString &vshFile, const QString &fshFile, const QString &gshFile = "") const;
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
     void resetView();
+    void updateLight();
 
-    OBJModel *model;
+    QQuaternion rotationBetweenVectors(const QVector3D &start, const QVector3D &dest) const;
+
+    OBJModel *model, *lightModel;
     GLuint shaderProgramID, mvpMatrixID, mMatrixID, vMatrixID;
     GLuint fillMethodID, shadingMethodID;
     GLuint lightPosID, lightColorID, lightPowerID, lightDirID, lightAngleID, lightExponentID, spotMethodID;
@@ -64,12 +67,15 @@ private:
     GLfloat pNear, pFar, specularPower, lightPower, lightAngle, lightExponent;
     QMatrix4x4 mProjection, mModel, mView;
     QVector3D outlineColor, ambientColor, diffuseColor, specularColor;
-    QVector3D lightPosition, lightColor, lightDirection;
+    QVector3D lightPosition, lightColor, lightDirection, lightPointsAt;
     QPoint lastMousePos;
     float hAngle, vAngle, mScale;
     float fovVal, zPos;
     bool drawOutline, drawMipLevels, drawRealMipmap;
     int fillMethod, shadingMethod, spotMethod;
+
+    GLuint lightVertexBuffer, lightVertexBufferSize, lightVertexArrayID;
+    QMatrix4x4 mLightModel;
 
 };
 

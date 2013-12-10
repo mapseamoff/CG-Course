@@ -40,10 +40,11 @@ public:
 private slots:
     void showModel(bool status);
     void setLightDirection(QVector3D point);
+    void setLightPosition(QVector3D lpos);
 
 private:
     ModelViewer *viewer;
-    OBJModel *model;
+    OBJModel *model, *lightModel;
 
     QComboBox *cbShading, *cbFill;
     PositionWidget *pwLightPos, *pwLightDir;
