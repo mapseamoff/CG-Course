@@ -43,8 +43,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     mScale = 5.0;
     outlineColor = QVector3D(0, 0, 0);
     drawOutline = true;
-    drawMipLevels = false;
-    drawRealMipmap = false;
+    drawLightCone = true;
     lightPosition = QVector3D(4, 4, 4);
     lightDirection = -lightPosition.normalized();
     specularPower = 20.0;
@@ -126,6 +125,12 @@ void ModelViewer::setMeshColor(QVector3D mc) {
 
 void ModelViewer::setDrawOutline(bool val) {
     drawOutline = val;
+    update();
+}
+
+void ModelViewer::setDrawLightCone(bool val) {
+    drawLightCone = val;
+    updateLight();
     update();
 }
 
@@ -303,19 +308,21 @@ void ModelViewer::paintGL() {
             glDisableVertexAttribArray(0);
         }
 
-        QMatrix4x4 mlMVP = mProjection * mView * mLightModel;
-        setUniformMatrix(glUniformMatrix4fv, mvpMatrixID, mlMVP, 4, 4);
+        if(drawLightCone) {
+            QMatrix4x4 mlMVP = mProjection * mView * mLightModel;
+            setUniformMatrix(glUniformMatrix4fv, mvpMatrixID, mlMVP, 4, 4);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glUniform1i(drawOutlineID, 1);
-        setUniformVector3f(outlineColorID, lightColor);
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, lightVertexBuffer);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glDrawArrays(GL_TRIANGLES, 0, lightVertexBufferSize);
-        glDisable(GL_POLYGON_OFFSET_FILL);
-        glDisableVertexAttribArray(0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glUniform1i(drawOutlineID, 1);
+            setUniformVector3f(outlineColorID, lightColor);
+            glEnableVertexAttribArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, lightVertexBuffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glDrawArrays(GL_TRIANGLES, 0, lightVertexBufferSize);
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDisableVertexAttribArray(0);
+        }
     }
 }
 

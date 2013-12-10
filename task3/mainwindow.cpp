@@ -101,6 +101,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     sbLE->setSingleStep(0.5);
     connect(sbLE, SIGNAL(valueChanged(double)), viewer, SLOT(setLightExponent(double)));
 
+    QCheckBox *cbDLC = new QCheckBox("Draw light cone", this);
+    cbDLC->setChecked(true);
+    connect(cbDLC, SIGNAL(toggled(bool)), viewer, SLOT(setDrawLightCone(bool)));
+
     QGroupBox *gbOptions = new QGroupBox("Options", this);
     QGridLayout *optLayout = new QGridLayout();
     optLayout->setSpacing(5);
@@ -134,7 +138,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     optLayout->addWidget(cbLI, 14, 0, 1, 2);
     optLayout->addWidget(new QLabel("Spot exponent:", this), 15, 0);
     optLayout->addWidget(sbLE, 15, 1, Qt::AlignRight);
-    optLayout->setRowStretch(16, 1);
+    optLayout->addWidget(cbDLC, 16, 0, 1, 2);
+    optLayout->setRowStretch(17, 1);
     gbOptions->setLayout(optLayout);
 
     QWidget *w = new QWidget(this);

@@ -37,6 +37,7 @@ public slots:
     void setShadingMethod(int m);
     void setSpotMethod(bool m);
     void setDrawOutline(bool val);
+    void setDrawLightCone(bool val);
 
 protected:
     void initializeGL();
@@ -71,7 +72,7 @@ private:
     QPoint lastMousePos;
     float hAngle, vAngle, mScale;
     float fovVal, zPos;
-    bool drawOutline, drawMipLevels, drawRealMipmap;
+    bool drawOutline, drawLightCone;
     int fillMethod, shadingMethod, spotMethod;
 
     GLuint lightVertexBuffer, lightVertexBufferSize, lightVertexArrayID;
