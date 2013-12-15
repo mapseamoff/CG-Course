@@ -7,71 +7,7 @@
 #include <QMatrix4x4>
 #include <QTimer>
 
-#include "objmodel.h"
-
-//----------------------------------------------------------------------------------------
-
-class CubemapTexture {
-public:
-    CubemapTexture() : texID(0) {}
-    ~CubemapTexture() {
-        glDeleteTextures(1, &texID);
-    }
-
-    bool load(const QString &posX, const QString &negX,
-              const QString &posY, const QString &negY,
-              const QString &posZ, const QString &negZ) {
-        glGenTextures(1, &texID);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
-
-        QMap<GLenum, QString> files;
-        files.insert(GL_TEXTURE_CUBE_MAP_POSITIVE_X, posX);
-        files.insert(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, negX);
-        files.insert(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, posY);
-        files.insert(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, negY);
-        files.insert(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, posZ);
-        files.insert(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, negZ);
-
-        for(QMap<GLenum, QString>::Iterator i = files.begin(); i != files.end(); ++i) {
-            QImage tex = QImage(i.value()).convertToFormat(QImage::Format_RGB888);
-            if(tex.isNull()) return false;
-            glTexImage2D(i.key(), 0, GL_RGB, tex.width(), tex.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex.bits());
-        }
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-        return true;
-    }
-
-    bool load(const QList<QImage> &imgs) {
-        glGenTextures(1, &texID);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
-
-        for(int i = 0; i < 6; ++i) {
-            const QImage &tex = imgs.at(i);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, tex.width(), tex.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex.bits());
-        }
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-        return true;
-    }
-
-    GLuint getTexID() const {
-        return texID;
-    }
-
-private:
-    GLuint texID;
-};
+#include "terrain.h"
 
 //----------------------------------------------------------------------------------------
 
@@ -82,22 +18,21 @@ public:
     ModelViewer(const QGLFormat &fmt, QWidget *parent = 0);
     ~ModelViewer();
 
-    void setTerrainBox(const QString &modelPath,
-                       const QString &posX, const QString &negX,
-                       const QString &posY, const QString &negY,
-                       const QString &posZ, const QString &negZ);
-    void setTerrainBox(const QString &modelPath, const QList<QImage> &imgs);
+    void setTerrainBox(const QList<QImage> &imgs);
+    void setTerrainBox(const QString &cubemap);
     void initParticles(size_t count, const QString &texPath);
+    void initTerrain(int cubeSize, int gridSize);
     void generateParticles(int cubeSize);
+    void generateTerrain(float persistence, float frequency, float amplitude, int octaves);
 
 signals:
     void openGLInitialized();
 
 public slots:
-    void terrrainModelLoaded(bool status);
     void setDistanceThreshold(double val);
     void setShowTerrain(bool val);
     void setBillboardType(int val);
+    void setWireframeMode(bool val);
 
 protected:
     void initializeGL();
@@ -126,7 +61,7 @@ private:
     GLuint shaderProgramID, vpMatrixID, texSamplerID;
     GLuint cameraPosID, cameraRightID, cameraUpID;
     GLuint viewportSizeID, billboardTypeID;
-    GLuint timeID, maxDistID, cubeSizeID;
+    GLuint timeID, maxDistID, cubeSizeID, psWireframeID;
 
     GLfloat pNear, pFar;
     QMatrix4x4 mProjection, mModel, mView;
@@ -138,13 +73,13 @@ private:
 
     qint64 startTime, lastTime;
     MoveDir currentMoveDir;
-    bool psEnabled, trEnabled, showTerrain;
+    bool psEnabled, trEnabled, showTerrain, showWireframe;
 
-    GLuint boxVertexBuffer, boxVertexBufferSize;
-    GLuint boxShaderProgramID, boxMVPID, boxSamplerID;
+    GLuint boxShaderProgramID;
+    Skybox skybox;
 
-    OBJModel *terrainModel;
-    CubemapTexture terrainTex;
+    GLuint terrainShaderProgramID;
+    Terrain terrain;
 
     size_t maxParticles;
     QTimer *psUpdateTimer;

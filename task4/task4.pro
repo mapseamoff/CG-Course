@@ -19,17 +19,17 @@ win32 {
 LIBS += -lGLEW
 
 SOURCES += \
-    objmodel.cpp \
     modelviewer.cpp \
     mainwindow.cpp \
     main.cpp \
-    colorpicker.cpp
+    colorpicker.cpp \
+    terrain.cpp
 
 HEADERS  += \
-    objmodel.h \
     modelviewer.h \
     mainwindow.h \
-    colorpicker.h
+    colorpicker.h \
+    terrain.h
 
 RESOURCES += \
     resources.qrc
@@ -41,5 +41,7 @@ OTHER_FILES += \
     boxFS.fsh \
     particleFS.fsh \
     particleVS.vsh \
-    particleGS.gsh
+    particleGS.gsh \
+    terrainVS.vsh \
+    terrainFS.fsh
 

@@ -46,9 +46,8 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     psEnabled = false;
     trEnabled = false;
     showTerrain = true;
+    showWireframe = false;
     currentMoveDir = None;
-
-    terrainModel = new OBJModel(this);
 
     psUpdateTimer = new QTimer(this);
     connect(psUpdateTimer, SIGNAL(timeout()), this, SLOT(update()));
@@ -56,6 +55,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
 
 ModelViewer::~ModelViewer() {
     glDeleteProgram(shaderProgramID);
+    glDeleteProgram(boxShaderProgramID);
     glDeleteVertexArrays(1, &vertexArrayID);
     glDeleteBuffers(1, &particlesPosBuffer);
     glDeleteBuffers(1, &particlesSpeedBuffer);
@@ -63,25 +63,6 @@ ModelViewer::~ModelViewer() {
 }
 
 //----------------------------------------------------------------------------------------
-
-void ModelViewer::terrrainModelLoaded(bool status) {
-    trEnabled = status;
-
-    std::vector<OBJVec3> vs;
-    for(std::vector<OBJFace>::iterator fi = terrainModel->faces.begin(); fi != terrainModel->faces.end(); ++fi) {
-        for(OBJFace::iterator fii = fi->begin(); fii != fi->end(); ++fii) {
-            vs.push_back(terrainModel->verts[fii->v - 1]);
-        }
-    }
-
-    glGenBuffers(1, &boxVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, boxVertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, vs.size() * sizeof(OBJVec3), &vs[0], GL_STATIC_DRAW);
-    boxVertexBufferSize = vs.size();
-
-    resetView();
-    update();
-}
 
 void ModelViewer::setDistanceThreshold(double val) {
     distThreshold = val;
@@ -98,18 +79,29 @@ void ModelViewer::setBillboardType(int val) {
     update();
 }
 
-//----------------------------------------------------------------------------------------
-
-void ModelViewer::setTerrainBox(const QString &modelPath, const QString &posX, const QString &negX, const QString &posY, const QString &negY, const QString &posZ, const QString &negZ) {
-    terrainModel->loadModel(modelPath);
-    connect(terrainModel, SIGNAL(loadStatus(bool)), this, SLOT(terrrainModelLoaded(bool)));
-    terrainTex.load(posX, negX, posY, negY, posZ, negZ);
+void ModelViewer::setWireframeMode(bool val) {
+    showWireframe = val;
+    update();
 }
 
-void ModelViewer::setTerrainBox(const QString &modelPath, const QList<QImage> &imgs) {
-    terrainModel->loadModel(modelPath);
-    connect(terrainModel, SIGNAL(loadStatus(bool)), this, SLOT(terrrainModelLoaded(bool)));
-    terrainTex.load(imgs);
+//----------------------------------------------------------------------------------------
+
+void ModelViewer::setTerrainBox(const QList<QImage> &imgs) {
+    QImage negYTex = skybox.setTexture(imgs);
+    terrain.setTexture(negYTex);
+
+    trEnabled = true;
+    resetView();
+    update();
+}
+
+void ModelViewer::setTerrainBox(const QString &cubemap) {
+    QImage negYTex = skybox.setTexture(cubemap);
+    terrain.setTexture(negYTex);
+
+    trEnabled = true;
+    resetView();
+    update();
 }
 
 //----------------------------------------------------------------------------------------
@@ -165,6 +157,15 @@ void ModelViewer::generateParticles(int cubeSize) {
     psUpdateTimer->start(16); // ~ 60 fps
     resetView();
     update();
+}
+
+void ModelViewer::initTerrain(int cubeSize, int gridSize) {
+    terrain.generatePlane(cubeSize * 2.0, cubeSize * 2.0, gridSize);
+}
+
+void ModelViewer::generateTerrain(float persistence, float frequency, float amplitude, int octaves) {
+    terrain.generateHeightMap(persistence, frequency, amplitude, octaves);
+    terrain.bindBuffer();
 }
 
 //----------------------------------------------------------------------------------------
@@ -226,7 +227,8 @@ void ModelViewer::initializeGL() {
     glDepthFunc(GL_LEQUAL);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
+    glPolygonOffset(-1.0, -1.0);
+//    glEnable(GL_CULL_FACE);
 
 //    shaderProgramID = createShaders(":/shaders/vertexShader.vsh", ":/shaders/fragmentShader.fsh", ":/shaders/geometryShader.geom");
     shaderProgramID = createShaders(":/shaders/particleVS.vsh", ":/shaders/particleFS.fsh", ":/shaders/particleGS.gsh");
@@ -244,10 +246,19 @@ void ModelViewer::initializeGL() {
     timeID = glGetUniformLocation(shaderProgramID, "time");
     maxDistID = glGetUniformLocation(shaderProgramID, "maxDist");
     cubeSizeID = glGetUniformLocation(shaderProgramID, "cubeSize");
+    psWireframeID = glGetUniformLocation(shaderProgramID, "wireframeMode");
 
     boxShaderProgramID = createShaders(":/shaders/boxVS.vsh", ":/shaders/boxFS.fsh");
-    boxMVPID = glGetUniformLocation(boxShaderProgramID, "MVP");
-    boxSamplerID = glGetUniformLocation(boxShaderProgramID, "cubemapSampler");
+    GLuint boxWireframeID = glGetUniformLocation(boxShaderProgramID, "wireframeMode");
+    GLuint boxMVPID = glGetUniformLocation(boxShaderProgramID, "MVP");
+    GLuint boxSamplerID = glGetUniformLocation(boxShaderProgramID, "cubemapSampler");
+    skybox.init(boxShaderProgramID, boxSamplerID, boxMVPID, boxWireframeID);
+
+    terrainShaderProgramID = createShaders(":/shaders/terrainVS.vsh", ":/shaders/terrainFS.fsh");
+    GLuint terrainMVPID = glGetUniformLocation(terrainShaderProgramID, "MVP");
+    GLuint terrainWireframeID = glGetUniformLocation(terrainShaderProgramID, "wireframeMode");
+    GLuint terrainSamplerID = glGetUniformLocation(terrainShaderProgramID, "texSampler");
+    terrain.init(terrainShaderProgramID, terrainSamplerID, terrainMVPID, terrainWireframeID);
 
     emit openGLInitialized();
 }
@@ -257,32 +268,16 @@ void ModelViewer::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if(trEnabled && showTerrain) {
-        GLint oldCFMode, oldDFMode;
-        glGetIntegerv(GL_CULL_FACE_MODE, &oldCFMode);
-        glGetIntegerv(GL_DEPTH_FUNC, &oldDFMode);
-
-        glCullFace(GL_FRONT);
-        glDepthFunc(GL_LEQUAL);
-
         mModel.setToIdentity();
         mModel.translate(vCameraPos);
-
         QMatrix4x4 mMVP = mProjection * mView * mModel;
 
-        glUseProgram(boxShaderProgramID);
-        setUniformMatrix(glUniformMatrix4fv, boxMVPID, mMVP, 4, 4);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, terrainTex.getTexID());
-        glUniform1i(boxSamplerID, 0);
+        skybox.render(mMVP);
+        if(showWireframe) skybox.render(mMVP, true);
 
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, boxVertexBuffer);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        glDrawArrays(GL_TRIANGLES, 0, boxVertexBufferSize);
-        glDisableVertexAttribArray(0);
-
-        glCullFace(oldCFMode);
-        glDepthFunc(oldDFMode);
+        QMatrix4x4 mVP = mProjection * mView;
+        terrain.render(mVP);
+        if(showWireframe) terrain.render(mVP, true);
     }
 
     if(psEnabled) {
@@ -292,6 +287,8 @@ void ModelViewer::paintGL() {
 
         updateCameraPos(deltaTime);
         QMatrix4x4 mVP = mProjection * mView;
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         glUseProgram(shaderProgramID);
 
@@ -304,6 +301,7 @@ void ModelViewer::paintGL() {
         glUniform2f(viewportSizeID, (GLfloat)this->size().width(), (GLfloat)this->size().height());
         glUniform1f(maxDistID, distThreshold);
         glUniform1f(cubeSizeID, psCubeSize);
+        glUniform1i(psWireframeID, 0);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, particleTexID);
@@ -318,6 +316,23 @@ void ModelViewer::paintGL() {
         glDrawArrays(GL_POINTS, 0, maxParticles);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
+
+        if(showWireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glUniform1i(psWireframeID, 1);
+
+            glEnableVertexAttribArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer);
+            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnableVertexAttribArray(1);
+            glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glDrawArrays(GL_POINTS, 0, maxParticles);
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDisableVertexAttribArray(0);
+            glDisableVertexAttribArray(1);
+        }
     }
 
 }

@@ -8,7 +8,6 @@
 #include <QCheckBox>
 
 #include "modelviewer.h"
-#include "objmodel.h"
 #include "colorpicker.h"
 
 //-----------------------------------------------------
@@ -21,15 +20,16 @@ public:
 
 private slots:
     void generateParticles();
+    void generateTerrain();
     void setTerrain();
 
 private:
-    QList<QImage> splitCubemap(const QString &file, bool save = false) const;
-    QImage getSubImage(const QImage &img, const QRect &rect) const;
-
     ModelViewer *viewer;
-    QSpinBox *sbPCount, *sbPSSize;
+    QSpinBox *sbPCount, *sbPSSize, *sbTCSize;
     QDoubleSpinBox *sbTDist;
+
+    QDoubleSpinBox *sbTPers, *sbTFreq, *sbTAmp;
+    QSpinBox *sbTOct;
 
 };
 

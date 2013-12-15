@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     gbStaticOptions->setFlat(true);
 
     sbPCount = new QSpinBox(this);
-    sbPCount->setRange(1, 1000000);
+    sbPCount->setRange(1, 100000);
     sbPCount->setSingleStep(50);
     sbPCount->setValue(10000);
 
@@ -30,6 +30,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     sbPSSize->setRange(50, 1000);
     sbPSSize->setSingleStep(50);
     sbPSSize->setValue(400);
+
+    sbTCSize = new QSpinBox(this);
+    sbTCSize->setRange(10, 400);
+    sbTCSize->setSingleStep(10);
+    sbTCSize->setValue(20);
 
     QGroupBox *gbDynamicOptions = new QGroupBox("Dynamic", this);
     gbDynamicOptions->setFlat(true);
@@ -50,8 +55,34 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     cbShowTerrain->setChecked(true);
     connect(cbShowTerrain, SIGNAL(toggled(bool)), viewer, SLOT(setShowTerrain(bool)));
 
+    QCheckBox *cbShowWireframe = new QCheckBox("Wireframe", this);
+    cbShowWireframe->setChecked(false);
+    connect(cbShowWireframe, SIGNAL(toggled(bool)), viewer, SLOT(setWireframeMode(bool)));
+
     QPushButton *pbGenerate = new QPushButton("Generate", this);
     connect(pbGenerate, SIGNAL(clicked()), this, SLOT(generateParticles()));
+
+    QGroupBox *gbTerrainOptions = new QGroupBox("Terrain", this);
+    gbTerrainOptions->setFlat(true);
+
+    sbTPers = new QDoubleSpinBox(this);
+    sbTPers->setRange(0.1, 10.0);
+    sbTPers->setValue(2.0);
+
+    sbTFreq = new QDoubleSpinBox(this);
+    sbTFreq->setRange(0.1, 20.0);
+    sbTFreq->setValue(10.0);
+
+    sbTAmp = new QDoubleSpinBox(this);
+    sbTAmp->setRange(0.1, 20.0);
+    sbTAmp->setValue(10.0);
+
+    sbTOct = new QSpinBox(this);
+    sbTOct->setRange(1, 10);
+    sbTOct->setValue(3);
+
+    QPushButton *pbUpdateTerrain = new QPushButton("Update terrain", this);
+    connect(pbUpdateTerrain, SIGNAL(clicked()), this, SLOT(generateTerrain()));
 
     QGroupBox *gbOptions = new QGroupBox("Options", this);
     QGridLayout *optLayout = new QGridLayout();
@@ -64,16 +95,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     optLayout->addWidget(sbPCount, 1, 1);
     optLayout->addWidget(new QLabel("Cube size:", this), 2, 0);
     optLayout->addWidget(sbPSSize, 2, 1);
+    optLayout->addWidget(new QLabel("Terrain grid size:", this), 3, 0);
+    optLayout->addWidget(sbTCSize, 3, 1);
 
-    optLayout->addWidget(gbDynamicOptions, 3, 0, 1, 2);
-    optLayout->addWidget(new QLabel("Billboard type:", this), 4, 0);
-    optLayout->addWidget(cbBType, 4, 1);
-    optLayout->addWidget(new QLabel("Thres distance:", this), 5, 0);
-    optLayout->addWidget(sbTDist, 5, 1);
-    optLayout->addWidget(cbShowTerrain, 6, 0, 1, 2);
+    optLayout->addWidget(gbDynamicOptions, 4, 0, 1, 2);
+    optLayout->addWidget(new QLabel("Billboard type:", this), 5, 0);
+    optLayout->addWidget(cbBType, 5, 1);
+    optLayout->addWidget(new QLabel("Thres distance:", this), 6, 0);
+    optLayout->addWidget(sbTDist, 6, 1);
+    optLayout->addWidget(cbShowTerrain, 7, 0, 1, 2);
+    optLayout->addWidget(cbShowWireframe, 8, 0, 1, 2);
 
-    optLayout->addWidget(pbGenerate, 8, 0, 1, 2);
-    optLayout->setRowStretch(7, 1);
+    optLayout->addWidget(pbGenerate, 9, 0, 1, 2);
+
+    optLayout->setRowStretch(10, 1);
+
+    optLayout->addWidget(gbTerrainOptions, 11, 0, 1, 2);
+    optLayout->addWidget(new QLabel("Persistence:", this), 12, 0);
+    optLayout->addWidget(sbTPers, 12, 1);
+    optLayout->addWidget(new QLabel("Frequency:", this), 13, 0);
+    optLayout->addWidget(sbTFreq, 13, 1);
+    optLayout->addWidget(new QLabel("Amplitude:", this), 14, 0);
+    optLayout->addWidget(sbTAmp, 14, 1);
+    optLayout->addWidget(new QLabel("Octaves:", this), 15, 0);
+    optLayout->addWidget(sbTOct, 15, 1);
+    optLayout->addWidget(pbUpdateTerrain, 16, 0, 1, 2);
+
     gbOptions->setLayout(optLayout);
 
     QWidget *w = new QWidget(this);
@@ -91,6 +138,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 void MainWindow::generateParticles() {
     sbTDist->setRange(0.0, sbPSSize->value() / 2);
     viewer->initParticles(sbPCount->value(), ":/textures/snowflakes.jpg");
+    viewer->initTerrain(sbPSSize->value(), sbTCSize->value());
+    generateTerrain();
     viewer->generateParticles(sbPSSize->value());
     viewer->setFocus();
 }
@@ -102,40 +151,9 @@ void MainWindow::setTerrain() {
                           ":/textures/sp3top.jpg", ":/textures/sp3bot.jpg",
                           ":/textures/sp3front.jpg", ":/textures/sp3back.jpg");
     */
-    viewer->setTerrainBox(":/models/sphere.obj", splitCubemap(":/textures/skybox1.png"));
+    viewer->setTerrainBox(":/textures/skybox1.png");
 }
 
-QImage MainWindow::getSubImage(const QImage &img, const QRect &rect) const {
-    size_t offset = rect.x() * img.depth() / 8 + rect.y() * img.bytesPerLine();
-    return QImage(img.bits() + offset, rect.width(), rect.height(), img.bytesPerLine(), img.format());
-}
-
-QList<QImage> MainWindow::splitCubemap(const QString &file, bool save) const {
-    QImage img(file);
-    int rw = 0;
-    int rh = 0;
-    for(int i = 0; i < img.width(); ++i) {
-        if(rw == 0 && img.pixel(i, 0) != qRgb(255,255,255)) rw = i;
-        if(rh == 0 && img.pixel(0, i) != qRgb(255,255,255)) rh = i;
-        if(rw != 0 && rh != 0) break;
-    }
-
-    QImage posY = getSubImage(img, QRect(rw, 0, rw, rh)).convertToFormat(QImage::Format_RGB888);
-    QImage negY = getSubImage(img, QRect(rw, 2*rh, rw, rh)).convertToFormat(QImage::Format_RGB888);
-    QImage negX = getSubImage(img, QRect(0, rh, rw, rh)).convertToFormat(QImage::Format_RGB888);
-    QImage posZ = getSubImage(img, QRect(rw, rh, rw, rh)).convertToFormat(QImage::Format_RGB888);
-    QImage posX = getSubImage(img, QRect(2*rw, rh, rw, rh)).convertToFormat(QImage::Format_RGB888);
-    QImage negZ = getSubImage(img, QRect(3*rw, rh, rw, rh)).convertToFormat(QImage::Format_RGB888);
-
-    if(save) {
-        posX.save("posX.png"); negX.save("negX.png");
-        posY.save("posY.png"); negY.save("negY.png");
-        posZ.save("posZ.png"); negZ.save("negZ.png");
-    }
-
-    QList<QImage> res;
-    res.append(posX); res.append(negX);
-    res.append(posY); res.append(negY);
-    res.append(posZ); res.append(negZ);
-    return res;
+void MainWindow::generateTerrain() {
+    viewer->generateTerrain(sbTPers->value(), sbTFreq->value(), sbTAmp->value(), sbTOct->value());
 }

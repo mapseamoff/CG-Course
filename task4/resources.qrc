@@ -5,14 +5,13 @@
         <file>particleFS.fsh</file>
         <file>particleVS.vsh</file>
         <file>particleGS.gsh</file>
+        <file>terrainFS.fsh</file>
+        <file>terrainVS.vsh</file>
     </qresource>
     <qresource prefix="/textures">
         <file>snow.jpeg</file>
         <file>skybox2.jpg</file>
         <file>skybox1.png</file>
         <file>snowflakes.jpg</file>
-    </qresource>
-    <qresource prefix="/models">
-        <file>sphere.obj</file>
     </qresource>
 </RCC>
