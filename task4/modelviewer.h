@@ -20,10 +20,13 @@ public:
 
     void setTerrainBox(const QList<QImage> &imgs);
     void setTerrainBox(const QString &cubemap);
+    void setFrustumModel(const QString &model);
     void initParticles(size_t count, const QString &texPath);
     void initTerrain(int cubeSize, int gridSize);
     void generateParticles(int cubeSize);
     void generateTerrain(float persistence, float frequency, float amplitude, int octaves);
+
+    void resetView();
 
 signals:
     void openGLInitialized();
@@ -33,6 +36,11 @@ public slots:
     void setShowTerrain(bool val);
     void setBillboardType(int val);
     void setWireframeMode(bool val);
+    void setTerrainTexMode(int val);
+    void setTerrainContrast(double val);
+
+    void setCurrentCamera(int i);
+    void setCameraMode(bool single);
 
 protected:
     void initializeGL();
@@ -49,11 +57,18 @@ protected:
 private:
     enum MoveDir { None, Left, Right, Forward, Backward };
 
+    struct Camera {
+        QVector3D pos, dir, up, right;
+    };
+
     QString readFile(const QString &fileName) const;
     GLuint createShaders(const QString &vshFile, const QString &fshFile, const QString &gshFile = "") const;
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
-    void resetView();
+
     void updateCameraPos(qint64 deltaTime);
+    void updateCameraFrustum();
+    void findIntersectedOctants();
+    Camera &currentCamera();
 
     GLuint particlesPosBuffer, particlesSpeedBuffer;
     GLuint particleTexID, vertexArrayID;
@@ -64,12 +79,12 @@ private:
     GLuint timeID, maxDistID, cubeSizeID, psWireframeID;
 
     GLfloat pNear, pFar;
-    QMatrix4x4 mProjection, mModel, mView;
-    QVector3D vCameraPos, vCameraDir, vCameraUp, vCameraRight;
+    QMatrix4x4 mProjection, mModel, mView, pVP;
+    Camera vCamera, fCamera;
     QPoint lastMousePos;
     float hAngle, vAngle, fovVal;
-    float distThreshold, psCubeSize;
-    int billboardType;
+    float distThreshold, psCubeSize, terrainContrast;
+    int billboardType, terrainTexMode, currentCameraID;
 
     qint64 startTime, lastTime;
     MoveDir currentMoveDir;
@@ -80,6 +95,9 @@ private:
 
     GLuint terrainShaderProgramID;
     Terrain terrain;
+
+    GLuint frustumShaderProgramID;
+    CameraFrustum vFrustum;
 
     size_t maxParticles;
     QTimer *psUpdateTimer;

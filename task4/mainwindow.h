@@ -19,18 +19,25 @@ public:
     MainWindow(QWidget *parent = 0);
 
 private slots:
+    void setTerrainTexture(int idx);
     void generateParticles();
     void generateTerrain();
     void setTerrain();
+    void setCameraMode(bool m);
 
 private:
     ModelViewer *viewer;
     QSpinBox *sbPCount, *sbPSSize, *sbTCSize;
     QDoubleSpinBox *sbTDist;
 
-    QDoubleSpinBox *sbTPers, *sbTFreq, *sbTAmp;
-    QSpinBox *sbTOct;
+    QComboBox *cbTerrainTexture;
+    QDoubleSpinBox *sbTAmp;
+    QSpinBox *sbTPers, *sbTFreq, *sbTOct;
 
+    QCheckBox *cbCameraMode;
+    QComboBox *cbCurrentCamera;
+
+    QList<QImage> cubemapTex;
 };
 
 #endif // MAINWINDOW_H

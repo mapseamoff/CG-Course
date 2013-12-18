@@ -11,6 +11,8 @@
 
 #include <QDateTime>
 
+#include "FrustumUtils.h"
+
 //----------------------------------------------------------------------------------------
 
 // We have to repack matrices from qreal to GLfloat.
@@ -40,7 +42,7 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     vAngle = 0;
     fovVal = 45.0;
     pNear = 0.1;
-    pFar = 500.0;
+    pFar = 800.0;
     distThreshold = 50.0;
     billboardType = 0;
     psEnabled = false;
@@ -48,6 +50,9 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
     showTerrain = true;
     showWireframe = false;
     currentMoveDir = None;
+    currentCameraID = 0;
+    terrainTexMode = 0;
+    terrainContrast = 1.0;
 
     psUpdateTimer = new QTimer(this);
     connect(psUpdateTimer, SIGNAL(timeout()), this, SLOT(update()));
@@ -60,6 +65,15 @@ ModelViewer::~ModelViewer() {
     glDeleteBuffers(1, &particlesPosBuffer);
     glDeleteBuffers(1, &particlesSpeedBuffer);
     glDeleteTextures(1, &particleTexID);
+}
+
+//----------------------------------------------------------------------------------------
+
+ModelViewer::Camera &ModelViewer::currentCamera() {
+    switch(currentCameraID) {
+    case 0: return vCamera;
+    default: return fCamera;
+    }
 }
 
 //----------------------------------------------------------------------------------------
@@ -84,6 +98,35 @@ void ModelViewer::setWireframeMode(bool val) {
     update();
 }
 
+void ModelViewer::setTerrainTexMode(int val) {
+    terrainTexMode = val;
+    update();
+}
+
+void ModelViewer::setTerrainContrast(double val) {
+    terrainContrast = val;
+    update();
+}
+
+void ModelViewer::setCurrentCamera(int i) {
+    currentCameraID = i;
+    if(i > 0) pVP = mProjection * mView;
+    Camera &cam = currentCamera();
+    mView.setToIdentity();
+    mView.lookAt(cam.pos, cam.pos + cam.dir, cam.up);
+    updateCameraFrustum();
+    update();
+}
+
+void ModelViewer::setCameraMode(bool single) {
+    fCamera = vCamera;
+    if(single) setCurrentCamera(0);
+}
+
+void ModelViewer::setFrustumModel(const QString &model) {
+    vFrustum.setModel(model);
+}
+
 //----------------------------------------------------------------------------------------
 
 void ModelViewer::setTerrainBox(const QList<QImage> &imgs) {
@@ -91,7 +134,7 @@ void ModelViewer::setTerrainBox(const QList<QImage> &imgs) {
     terrain.setTexture(negYTex);
 
     trEnabled = true;
-    resetView();
+//    resetView();
     update();
 }
 
@@ -100,7 +143,7 @@ void ModelViewer::setTerrainBox(const QString &cubemap) {
     terrain.setTexture(negYTex);
 
     trEnabled = true;
-    resetView();
+//    resetView();
     update();
 }
 
@@ -134,7 +177,9 @@ void ModelViewer::generateParticles(int cubeSize) {
     std::vector<GLfloat> sp;
     for(size_t i = 0; i < maxParticles; ++i) {
         vs.push_back(qrand() % cubeSize - halfSize);        //pos x
-        vs.push_back(qrand() % halfSize + halfSize / 2);    //pos y
+//        vs.push_back(qrand() % halfSize + halfSize / 2);    //pos y
+        vs.push_back(qrand() % (halfSize / 2) + halfSize);    //pos y
+//        vs.push_back(halfSize);    //pos y
         vs.push_back(qrand() % cubeSize - halfSize);        //pos z
         vs.push_back(qrand() % 30 + 10);                    //size
 //        vs.push_back(qrand() % 3 + 1.0);                    //size
@@ -160,12 +205,14 @@ void ModelViewer::generateParticles(int cubeSize) {
 }
 
 void ModelViewer::initTerrain(int cubeSize, int gridSize) {
-    terrain.generatePlane(cubeSize * 2.0, cubeSize * 2.0, gridSize);
+    terrain.generatePlane(cubeSize * 1.5, cubeSize * 1.5, gridSize);
 }
 
 void ModelViewer::generateTerrain(float persistence, float frequency, float amplitude, int octaves) {
-    terrain.generateHeightMap(persistence, frequency, amplitude, octaves);
-    terrain.bindBuffer();
+    if(terrain.ready()) {
+        terrain.generateHeightMap(persistence, frequency, amplitude, octaves);
+        terrain.bindBuffer();
+    }
 }
 
 //----------------------------------------------------------------------------------------
@@ -175,15 +222,15 @@ void ModelViewer::resetView() {
     vAngle = 0;
     fovVal = 60.0;
 
-    vCameraPos = QVector3D(0, 0, 0);
-    vCameraUp = QVector3D(0, 1, 0);
-    vCameraDir = QVector3D(0, 0, -1);
-    vCameraRight = QVector3D(1, 0, 0);
+    vCamera.pos = QVector3D(0, 0, 0);
+    vCamera.up = QVector3D(0, 1, 0);
+    vCamera.dir = QVector3D(0, 0, -1);
+    vCamera.right = QVector3D(1, 0, 0);
 
     mProjection.setToIdentity();
     mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
     mView.setToIdentity();
-    mView.lookAt(vCameraPos, vCameraPos + vCameraDir, vCameraUp);
+    mView.lookAt(vCamera.pos, vCamera.pos + vCamera.dir, vCamera.up);
     mModel.setToIdentity();
 }
 
@@ -191,18 +238,46 @@ void ModelViewer::updateCameraPos(qint64 deltaTime) {
     static const float mspeed = 0.1;
     bool changed = true;
 
+    Camera &cam = currentCamera();
     switch(currentMoveDir) {
-    case Forward: vCameraPos += vCameraDir * deltaTime * mspeed; break;
-    case Backward: vCameraPos -= vCameraDir * deltaTime * mspeed; break;
-    case Right: vCameraPos += vCameraRight * deltaTime * mspeed; break;
-    case Left: vCameraPos -= vCameraRight * deltaTime * mspeed; break;
+    case Forward: cam.pos += cam.dir * deltaTime * mspeed; break;
+    case Backward: cam.pos -= cam.dir * deltaTime * mspeed; break;
+    case Right: cam.pos += cam.right * deltaTime * mspeed; break;
+    case Left: cam.pos -= cam.right * deltaTime * mspeed; break;
     default: changed = false; break;
     }
 
+//    switch(currentMoveDir) {
+//    case Forward: vCamera.pos += vCamera.dir * deltaTime * mspeed; break;
+//    case Backward: vCamera.pos -= vCamera.dir * deltaTime * mspeed; break;
+//    case Right: vCamera.pos += vCamera.right * deltaTime * mspeed; break;
+//    case Left: vCamera.pos -= vCamera.right * deltaTime * mspeed; break;
+//    default: changed = false; break;
+//    }
+
     if(changed) {
         mView.setToIdentity();
-        mView.lookAt(vCameraPos, vCameraPos + vCameraDir, vCameraUp);
+        mView.lookAt(cam.pos, cam.pos + cam.dir, cam.up);
+//        mView.lookAt(vCamera.pos, vCamera.pos + vCamera.dir, vCamera.up);
     }
+
+
+}
+
+void ModelViewer::updateCameraFrustum() {
+    if(currentCameraID > 0) {
+        vFrustum.update(vCamera.pos, vCamera.dir, pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
+    }
+}
+
+void ModelViewer::findIntersectedOctants() {
+    float cubeSize = 400.0;
+    QVector<int> octs = FrustumUtils::getIntersections(mProjection * mView, vCamera.pos, cubeSize / 2.0);
+    std::cout << "Intersected octants " << octs.size() << ": ";
+    for(int j = 0; j < octs.size(); ++j) {
+        std::cout << octs[j] << " ";
+    }
+    std::cout << std::endl;
 }
 
 //----------------------------------------------------------------------------------------
@@ -230,7 +305,6 @@ void ModelViewer::initializeGL() {
     glPolygonOffset(-1.0, -1.0);
 //    glEnable(GL_CULL_FACE);
 
-//    shaderProgramID = createShaders(":/shaders/vertexShader.vsh", ":/shaders/fragmentShader.fsh", ":/shaders/geometryShader.geom");
     shaderProgramID = createShaders(":/shaders/particleVS.vsh", ":/shaders/particleFS.fsh", ":/shaders/particleGS.gsh");
 
     glGenVertexArrays(1, &vertexArrayID);
@@ -258,7 +332,15 @@ void ModelViewer::initializeGL() {
     GLuint terrainMVPID = glGetUniformLocation(terrainShaderProgramID, "MVP");
     GLuint terrainWireframeID = glGetUniformLocation(terrainShaderProgramID, "wireframeMode");
     GLuint terrainSamplerID = glGetUniformLocation(terrainShaderProgramID, "texSampler");
-    terrain.init(terrainShaderProgramID, terrainSamplerID, terrainMVPID, terrainWireframeID);
+    GLuint terrainTexModeID = glGetUniformLocation(terrainShaderProgramID, "textureMode");
+    GLuint terrainContrastID = glGetUniformLocation(terrainShaderProgramID, "userContrast");
+    terrain.init(terrainShaderProgramID, terrainSamplerID, terrainMVPID, terrainWireframeID, terrainTexModeID, terrainContrastID);
+
+    frustumShaderProgramID = createShaders(":/shaders/modelVS.vsh", ":/shaders/modelFS.fsh");
+    GLuint frustumMVPID = glGetUniformLocation(frustumShaderProgramID, "MVP");
+    GLuint frustumWireframeID = glGetUniformLocation(frustumShaderProgramID, "wireframeMode");
+    GLuint frustumColorID = glGetUniformLocation(frustumShaderProgramID, "modelColor");
+    vFrustum.init(frustumShaderProgramID, frustumMVPID, frustumWireframeID, frustumColorID);
 
     emit openGLInitialized();
 }
@@ -269,23 +351,29 @@ void ModelViewer::paintGL() {
 
     if(trEnabled && showTerrain) {
         mModel.setToIdentity();
-        mModel.translate(vCameraPos);
+        mModel.translate(currentCamera().pos);
         QMatrix4x4 mMVP = mProjection * mView * mModel;
 
         skybox.render(mMVP);
         if(showWireframe) skybox.render(mMVP, true);
 
-        QMatrix4x4 mVP = mProjection * mView;
-        terrain.render(mVP);
+        QMatrix4x4 tm;
+        tm.setToIdentity();
+        tm.translate(0, -5, 0);
+        QMatrix4x4 mVP = mProjection * mView * tm;
+        terrain.render(mVP, false, terrainTexMode, terrainContrast);
         if(showWireframe) terrain.render(mVP, true);
     }
 
     if(psEnabled) {
         qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
         qint64 deltaTime =  currentTime - lastTime;
+        qint64 simTime = currentTime - startTime;
         lastTime = currentTime;
 
         updateCameraPos(deltaTime);
+        findIntersectedOctants();
+
         QMatrix4x4 mVP = mProjection * mView;
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -293,10 +381,10 @@ void ModelViewer::paintGL() {
         glUseProgram(shaderProgramID);
 
         setUniformMatrix(glUniformMatrix4fv, vpMatrixID, mVP, 4, 4);
-        setUniformVector3f(cameraRightID, vCameraRight);
-        setUniformVector3f(cameraPosID, vCameraPos);
-        setUniformVector3f(cameraUpID, vCameraUp);
-        glUniform1i(timeID, (int)(currentTime - startTime));
+        setUniformVector3f(cameraRightID, vCamera.right);
+        setUniformVector3f(cameraPosID, vCamera.pos);
+        setUniformVector3f(cameraUpID, vCamera.up);
+        glUniform1i(timeID, simTime);
         glUniform1i(billboardTypeID, billboardType);
         glUniform2f(viewportSizeID, (GLfloat)this->size().width(), (GLfloat)this->size().height());
         glUniform1f(maxDistID, distThreshold);
@@ -333,6 +421,13 @@ void ModelViewer::paintGL() {
             glDisableVertexAttribArray(0);
             glDisableVertexAttribArray(1);
         }
+
+        if(currentCameraID > 0) {
+            float cubeSize = 400.0;
+            QVector<int> octs = FrustumUtils::getIntersections(pVP, vCamera.pos, cubeSize / 2.0 + 1);
+//            vFrustum.update(vCamera.pos, vCamera.dir, pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
+            vFrustum.render(mVP, vCamera.pos, octs, cubeSize);
+        }
     }
 
 }
@@ -341,6 +436,7 @@ void ModelViewer::resizeGL(int width, int height) {
     glViewport(0, 0, width, height);
     mProjection.setToIdentity();
     mProjection.perspective(fovVal, (float)width / (float)height, pNear, pFar);
+    updateCameraFrustum();
 }
 
 //----------------------------------------------------------------------------------------
@@ -359,12 +455,13 @@ void ModelViewer::mouseMoveEvent(QMouseEvent *event) {
     float rhAngle = hAngle / 180.0 * M_PI;
     float rvAngle = vAngle / 180.0 * M_PI;
 
-    vCameraDir = QVector3D(cos(rvAngle) * sin(rhAngle), sin(rvAngle), cos(rvAngle) * cos(rhAngle));
-    vCameraRight = QVector3D(sin(rhAngle - M_PI_2), 0, cos(rhAngle - M_PI_2));
-    vCameraUp = QVector3D::crossProduct(vCameraRight, vCameraDir);
+    Camera &cam = currentCamera();
+    cam.dir = QVector3D(cos(rvAngle) * sin(rhAngle), sin(rvAngle), cos(rvAngle) * cos(rhAngle));
+    cam.right = QVector3D(sin(rhAngle - M_PI_2), 0, cos(rhAngle - M_PI_2));
+    cam.up = QVector3D::crossProduct(cam.right, cam.dir);
 
     mView.setToIdentity();
-    mView.lookAt(vCameraPos, vCameraPos + vCameraDir, vCameraUp);
+    mView.lookAt(cam.pos, cam.pos + cam.dir, cam.up);
 
     update();
 }
@@ -390,6 +487,7 @@ void ModelViewer::wheelEvent(QWheelEvent *event) {
         fovVal = std::min(std::max(fovVal - 0.05 * event->delta(), 10.0), 90.0);
         mProjection.setToIdentity();
         mProjection.perspective(fovVal, (float)this->width() / (float)this->height(), pNear, pFar);
+        updateCameraFrustum();
     }
     update();
 }

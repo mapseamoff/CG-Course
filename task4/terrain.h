@@ -7,6 +7,8 @@
 #include <QImage>
 #include <QMatrix4x4>
 
+#include "objmodel.h"
+
 class CubemapTexture {
 public:
     CubemapTexture() : texID(0) {}
@@ -23,10 +25,11 @@ public:
         return texID;
     }
 
-private:
-    QImage getSubImage(const QImage &img, const QRect &rect) const;
-    QList<QImage> splitCubemap(const QString &file, bool save = false) const;
+    static void splitStrip(const QString &file, int size);
+    static QImage getSubImage(const QImage &img, const QRect &rect);
+    static QList<QImage> splitCubemap(const QString &file, bool save = false);
 
+private:
     GLuint texID;
 };
 
@@ -54,23 +57,36 @@ private:
 
 class Terrain {
 public:
-    Terrain() : vertexBuffer(0), texID(0) {}
+    Terrain() : vertexBuffer(0), normalBuffer(0), texID(0), normalTexID(0) {}
     ~Terrain();
 
-    void init(GLuint shaderProgram, GLuint texSampler, GLuint mvp, GLuint wm);
+    bool ready() const {
+        return !vertexCoords.empty();
+    }
+
+    void init(GLuint shaderProgram, GLuint texSampler, GLuint mvp, GLuint wm, GLuint tm, GLuint uc);
     void generatePlane(float planeZSize, float planeXSize, float cellSize);
     void generateHeightMap(float persistence, float frequency, float amplitude, int octaves);
     void bindBuffer();
 
-    void setTexture(const QImage &img);
-    void render(const QMatrix4x4 &mvp, bool wireframe = false);
+    void setTexture(const QImage &img, bool terrain = true);
+    void render(const QMatrix4x4 &mvp, bool wireframe = false, int texMode = 0, float contrast = 1.0);
 
 private:
-    GLuint shaderProgramID, mvpID, wmID, texSamplerID;
-    GLuint vertexBuffer, texCoordBuffer, indexBuffer, indexBufferSize;
-    GLuint texID;
+    void computeNormals();
+    inline void incGridNormal(QVector<QPair<QVector3D, int> > &norms, const QVector3D &v, int x, int z);
+    inline void incGridNormal(QVector<QPair<QVector3D, int> > &norms, const QVector3D &left, const QVector3D &right, int x, int z, bool isEven);
+    inline QVector3D getVertex(int x, int y) const;
+    inline QPolygon getXZTriangle(const QVector3D &v1, const QVector3D &v2, const QVector3D &v3);
+    inline QColor colorFromNorm(const QVector3D &norm);
 
-    QVector<float> vertexCoords;
+    GLuint shaderProgramID, mvpID, wmID, texSamplerID, texModeID, contrastID;
+    GLuint vertexBuffer, texCoordBuffer, indexBuffer, indexBufferSize, normalBuffer;
+    GLuint texID, normalTexID;
+
+    float gridSize;
+    int vW, vL;
+    QVector<float> vertexCoords, vertexNormals;
 };
 
 //-------------------------------------------------------------------
@@ -91,6 +107,36 @@ private:
 
     double persistence, frequency, amplitude;
     int octaves, randomseed;
+};
+
+//-------------------------------------------------------------------
+
+class CameraFrustum : public QObject {
+    Q_OBJECT
+
+public:
+    CameraFrustum();
+    ~CameraFrustum();
+
+    void setModel(const QString &model);
+    void init(GLuint shaderProgram, GLuint mvp, GLuint wm, GLuint mc);
+    void update(const QVector3D &cameraPos, const QVector3D &cameraDir, float far, float fov, float ratio);
+    void render(const QMatrix4x4 &vp, const QVector3D &cameraPos, const QVector<int> &octs, float cubeSize = 0.0);
+
+private slots:
+    void setModelBuffer();
+    void renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float cubeSize, int i, const QVector<int> &octs);
+    void renderCubePrecomp(bool wireframe = false);
+
+private:
+    QQuaternion rotationBetweenVectors(const QVector3D &start, const QVector3D &dest) const;
+
+    GLuint shaderProgramID, mvpID, wmID, colorID;
+    GLuint vertexBuffer, vertexBufferSize;
+    GLuint cubeVertexBuffer, cubeIndexBuffer;
+
+    OBJModel *mFrustum;
+    QMatrix4x4 mModel;
 };
 
 

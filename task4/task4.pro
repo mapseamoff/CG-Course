@@ -23,13 +23,17 @@ SOURCES += \
     mainwindow.cpp \
     main.cpp \
     colorpicker.cpp \
-    terrain.cpp
+    terrain.cpp \
+    objmodel.cpp \
+    FrustumUtils.cpp
 
 HEADERS  += \
     modelviewer.h \
     mainwindow.h \
     colorpicker.h \
-    terrain.h
+    terrain.h \
+    objmodel.h \
+    FrustumUtils.h
 
 RESOURCES += \
     resources.qrc
@@ -43,5 +47,7 @@ OTHER_FILES += \
     particleVS.vsh \
     particleGS.gsh \
     terrainVS.vsh \
-    terrainFS.fsh
+    terrainFS.fsh \
+    modelVS.vsh \
+    modelFS.fsh
 

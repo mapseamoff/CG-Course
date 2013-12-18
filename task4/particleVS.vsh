@@ -1,7 +1,7 @@
 #version 330 core
 
 layout(location = 0) in vec4 xyzs;   //position and size
-layout(location = 1) in vec3 srf;    //speed, radius, frequence
+layout(location = 1) in vec3 srf;    //speed, radius, frequence, delay
 
 uniform mat4 VP;
 uniform vec3 cameraPos;
@@ -43,14 +43,12 @@ void main() {
     vec3 vpos = xyzs.xyz;
 
     float lifeDistance = xyzs.y + cubeSize / 2.0;
+//    float lifeDistance = cubeSize;
     int timeMod = int(ceil(lifeDistance / srf.x));
     vpos.y = xyzs.y - srf.x * (time % timeMod);
     vpos.x = xyzs.x + srf.y * cos(srf.z * time);
     vpos.z = xyzs.z + srf.y * sin(srf.z * time);
 
-//    float cubeX = sign(cameraPos.x) * floor((abs(cameraPos.x) + halfSize) / cubeSize);
-//    float cubeY = sign(cameraPos.y) * floor((abs(cameraPos.y) + halfSize) / cubeSize);
-//    float cubeZ = sign(cameraPos.z) * floor((abs(cameraPos.z) + halfSize) / cubeSize);
     vec3 cubeIndex = getCubeIndex(cameraPos);
     vec3 cubeCameraPos = cameraPos - cubeSize * cubeIndex;
 
