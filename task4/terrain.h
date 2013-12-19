@@ -120,12 +120,12 @@ public:
 
     void setModel(const QString &model);
     void init(GLuint shaderProgram, GLuint mvp, GLuint wm, GLuint mc);
-    void update(const QVector3D &cameraPos, const QVector3D &cameraDir, float far, float fov, float ratio);
-    void render(const QMatrix4x4 &vp, const QVector3D &cameraPos, const QVector<int> &octs, float cubeSize = 0.0);
+    void update(const QVector3D &cameraPos, const QVector3D &cameraDir, const QVector3D &cameraRight, float far, float fov, float ratio);
+    void render(const QMatrix4x4 &vp, const QVector3D &cameraPos, int octs, float cubeSize = 0.0);
 
 private slots:
     void setModelBuffer();
-    void renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float cubeSize, int i, const QVector<int> &octs);
+    void renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float cubeSize, bool ints);
     void renderCubePrecomp(bool wireframe = false);
 
 private:

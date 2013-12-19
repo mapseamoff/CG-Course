@@ -509,17 +509,21 @@ QQuaternion CameraFrustum::rotationBetweenVectors(const QVector3D &start, const 
     return QQuaternion(s * 0.5f, rotationAxis.x() * invs, rotationAxis.y() * invs, rotationAxis.z() * invs);
 }
 
-void CameraFrustum::update(const QVector3D &cameraPos, const QVector3D &cameraDir, float far, float fov, float ratio) {
+void CameraFrustum::update(const QVector3D &cameraPos, const QVector3D &cameraDir, const QVector3D &cameraRight,
+                           float far, float fov, float ratio) {
     mModel.setToIdentity();
 
-    QQuaternion rot1 = rotationBetweenVectors(QVector3D(0, 0, -1), QVector3D(cameraDir.x(), 0, cameraDir.z()));
-    QVector3D right = QVector3D::crossProduct(cameraDir, QVector3D(0, 1, 0));
-    QVector3D desiredUp = QVector3D::crossProduct(right, cameraDir);
-    QVector3D newUp = rot1.vector() * QVector3D(0, 1, 0);
-    QQuaternion rot2 = rotationBetweenVectors(newUp, desiredUp);
-
-    mModel.rotate(rot2 * rot1);
-    if(cameraDir.x() > 0) mModel.rotate(180.0, QVector3D(0, 1, 0));
+    QVector3D desiredUp = QVector3D::crossProduct(cameraRight, cameraDir);
+    if(qAbs(QVector3D::dotProduct(desiredUp, QVector3D(0, 1, 0))) > 1e-6) {
+        QQuaternion rot1 = rotationBetweenVectors(QVector3D(0, 0, -1), QVector3D(cameraDir.x(), 0, cameraDir.z()));
+        QVector3D newUp = rot1.rotatedVector(QVector3D(0, 1, 0));
+        QQuaternion rot2 = rotationBetweenVectors(newUp, desiredUp);
+        mModel.rotate(rot2 * rot1);
+    } else {
+        QQuaternion rot1 = QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0), (cameraDir.y() > 0 ? 1 : -1) * 90.0);
+        QQuaternion rot2 = rotationBetweenVectors(QVector3D(1, 0, 0), cameraRight);
+        mModel.rotate(rot2 * rot1);
+    }
 
     QVector4D realPos = cameraPos.toVector4D();
     realPos.setW(1.0);
@@ -564,7 +568,7 @@ void CameraFrustum::init(GLuint shaderProgram, GLuint mvp, GLuint wm, GLuint mc)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
-void CameraFrustum::render(const QMatrix4x4 &vp, const QVector3D &cameraPos, const QVector<int> &octs, float cubeSize) {
+void CameraFrustum::render(const QMatrix4x4 &vp, const QVector3D &cameraPos, int octs, float cubeSize) {
     if(vertexBuffer == 0) return;
 
     QMatrix4x4 mvp = vp * mModel;
@@ -593,17 +597,17 @@ void CameraFrustum::render(const QMatrix4x4 &vp, const QVector3D &cameraPos, con
 
     float osz = cubeSize / 2.0;
     float cs = osz / 2.0 + 0.1;
-    renderCube(vp, cameraPos + QVector3D(-cs, cs, -cs), osz, 0, octs);
-    renderCube(vp, cameraPos + QVector3D(cs, cs, -cs), osz, 1, octs);
-    renderCube(vp, cameraPos + QVector3D(-cs, cs, cs), osz, 2, octs);
-    renderCube(vp, cameraPos + QVector3D(cs, cs, cs), osz, 3, octs);
-    renderCube(vp, cameraPos + QVector3D(-cs, -cs, -cs), osz, 4, octs);
-    renderCube(vp, cameraPos + QVector3D(cs, -cs, -cs), osz, 5, octs);
-    renderCube(vp, cameraPos + QVector3D(-cs, -cs, cs), osz, 6, octs);
-    renderCube(vp, cameraPos + QVector3D(cs, -cs, cs), osz, 7, octs);
+    renderCube(vp, cameraPos + QVector3D(-cs, cs, -cs), osz, octs & (1 << 0));
+    renderCube(vp, cameraPos + QVector3D(cs, cs, -cs),  osz, octs & (1 << 1));
+    renderCube(vp, cameraPos + QVector3D(-cs, cs, cs),  osz, octs & (1 << 2));
+    renderCube(vp, cameraPos + QVector3D(cs, cs, cs),   osz, octs & (1 << 3));
+    renderCube(vp, cameraPos + QVector3D(-cs, -cs, -cs),osz, octs & (1 << 4));
+    renderCube(vp, cameraPos + QVector3D(cs, -cs, -cs), osz, octs & (1 << 5));
+    renderCube(vp, cameraPos + QVector3D(-cs, -cs, cs), osz, octs & (1 << 6));
+    renderCube(vp, cameraPos + QVector3D(cs, -cs, cs),  osz, octs & (1 << 7));
 }
 
-void CameraFrustum::renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float cubeSize, int i, const QVector<int> &octs) {
+void CameraFrustum::renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float cubeSize, bool ints) {
     QMatrix4x4 mm;
     mm.setToIdentity();
     mm.translate(pos);
@@ -612,7 +616,7 @@ void CameraFrustum::renderCube(const QMatrix4x4 &vp, const QVector3D &pos, float
 
     glUseProgram(shaderProgramID);
     setUniformMatrix(glUniformMatrix4fv, mvpID, mvp, 4, 4);
-    if(octs.contains(i)) glUniform3f(colorID, 0.0, 1.0, 0.0);
+    if(ints) glUniform3f(colorID, 0.0, 1.0, 0.0);
     else glUniform3f(colorID, 1.0, 0.5, 0.0);
     renderCubePrecomp(false);
     renderCubePrecomp(true);

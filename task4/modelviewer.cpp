@@ -61,6 +61,8 @@ ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new 
 ModelViewer::~ModelViewer() {
     glDeleteProgram(shaderProgramID);
     glDeleteProgram(boxShaderProgramID);
+    glDeleteProgram(terrainShaderProgramID);
+    glDeleteProgram(frustumShaderProgramID);
     glDeleteVertexArrays(1, &vertexArrayID);
     glDeleteBuffers(1, &particlesPosBuffer);
     glDeleteBuffers(1, &particlesSpeedBuffer);
@@ -266,18 +268,23 @@ void ModelViewer::updateCameraPos(qint64 deltaTime) {
 
 void ModelViewer::updateCameraFrustum() {
     if(currentCameraID > 0) {
-        vFrustum.update(vCamera.pos, vCamera.dir, pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
+        vFrustum.update(vCamera.pos, vCamera.dir, vCamera.right,
+                        pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
     }
 }
 
 void ModelViewer::findIntersectedOctants() {
+    /*
     float cubeSize = 400.0;
+    int res = FrustumUtils::getIntersectionsAsInt(mProjection * mView, vCamera.pos, cubeSize / 2.0);
+
     QVector<int> octs = FrustumUtils::getIntersections(mProjection * mView, vCamera.pos, cubeSize / 2.0);
     std::cout << "Intersected octants " << octs.size() << ": ";
     for(int j = 0; j < octs.size(); ++j) {
         std::cout << octs[j] << " ";
     }
     std::cout << std::endl;
+    */
 }
 
 //----------------------------------------------------------------------------------------
@@ -321,6 +328,7 @@ void ModelViewer::initializeGL() {
     maxDistID = glGetUniformLocation(shaderProgramID, "maxDist");
     cubeSizeID = glGetUniformLocation(shaderProgramID, "cubeSize");
     psWireframeID = glGetUniformLocation(shaderProgramID, "wireframeMode");
+    octantsID = glGetUniformLocation(shaderProgramID, "octants");
 
     boxShaderProgramID = createShaders(":/shaders/boxVS.vsh", ":/shaders/boxFS.fsh");
     GLuint boxWireframeID = glGetUniformLocation(boxShaderProgramID, "wireframeMode");
@@ -372,14 +380,16 @@ void ModelViewer::paintGL() {
         lastTime = currentTime;
 
         updateCameraPos(deltaTime);
-        findIntersectedOctants();
 
         QMatrix4x4 mVP = mProjection * mView;
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        QMatrix4x4 clipVP = currentCameraID == 0 ? mVP : pVP;
+        int octs = FrustumUtils::getIntersectionsAsInt(clipVP, vCamera.pos, psCubeSize / 2.0);
+        findIntersectedOctants();
 
         glUseProgram(shaderProgramID);
 
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         setUniformMatrix(glUniformMatrix4fv, vpMatrixID, mVP, 4, 4);
         setUniformVector3f(cameraRightID, vCamera.right);
         setUniformVector3f(cameraPosID, vCamera.pos);
@@ -389,6 +399,8 @@ void ModelViewer::paintGL() {
         glUniform2f(viewportSizeID, (GLfloat)this->size().width(), (GLfloat)this->size().height());
         glUniform1f(maxDistID, distThreshold);
         glUniform1f(cubeSizeID, psCubeSize);
+        glUniform1i(octantsID, octs);
+
         glUniform1i(psWireframeID, 0);
 
         glActiveTexture(GL_TEXTURE0);
@@ -423,10 +435,8 @@ void ModelViewer::paintGL() {
         }
 
         if(currentCameraID > 0) {
-            float cubeSize = 400.0;
-            QVector<int> octs = FrustumUtils::getIntersections(pVP, vCamera.pos, cubeSize / 2.0 + 1);
-//            vFrustum.update(vCamera.pos, vCamera.dir, pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
-            vFrustum.render(mVP, vCamera.pos, octs, cubeSize);
+//            vFrustum.update(vCamera.pos, vCamera.dir, vCamera.right, pFar, fovVal * M_PI / 180.0, (float)width() / (float)height());
+            vFrustum.render(mVP, vCamera.pos, octs, psCubeSize);
         }
     }
 

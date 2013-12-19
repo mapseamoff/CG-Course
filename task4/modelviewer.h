@@ -76,7 +76,7 @@ private:
     GLuint shaderProgramID, vpMatrixID, texSamplerID;
     GLuint cameraPosID, cameraRightID, cameraUpID;
     GLuint viewportSizeID, billboardTypeID;
-    GLuint timeID, maxDistID, cubeSizeID, psWireframeID;
+    GLuint timeID, maxDistID, cubeSizeID, psWireframeID, octantsID;
 
     GLfloat pNear, pFar;
     QMatrix4x4 mProjection, mModel, mView, pVP;

@@ -13,13 +13,10 @@ static void normalizeFPlane(FPlane &plane) {
     plane.d = plane.d / mag;
 }
 
-#include <QDebug>
-
 QVector<QVector4D> FrustumUtils::extractPlanes(const QMatrix4x4 &vp) {
     FPlane p_planes[6];
 
-//    qDebug() << vp;
-
+    // Left clipping plane
     p_planes[0].a = vp(3, 0) + vp(0, 0);
     p_planes[0].b = vp(3, 1) + vp(0, 1);
     p_planes[0].c = vp(3, 2) + vp(0, 2);
@@ -127,4 +124,23 @@ QVector<int> FrustumUtils::getIntersections(const QMatrix4x4 &vp, const QVector3
     ++i;
 
     return octs;
+}
+
+int FrustumUtils::getIntersectionsAsInt(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize) {
+    QVector<QVector4D> planes = extractPlanes(vp);
+
+    int res = 0;
+    float halfSize = cubeSize / 2.0;
+    float adjSize = halfSize - 0.1;
+
+    res |= intersects(planes, camPos + QVector3D(-halfSize, halfSize, -halfSize), adjSize) << 0;
+    res |= intersects(planes, camPos + QVector3D(halfSize, halfSize, -halfSize), adjSize) << 1;
+    res |= intersects(planes, camPos + QVector3D(-halfSize, halfSize, halfSize), adjSize) << 2;
+    res |= intersects(planes, camPos + QVector3D(halfSize, halfSize, halfSize), adjSize) << 3;
+    res |= intersects(planes, camPos + QVector3D(-halfSize, -halfSize, -halfSize), adjSize) << 4;
+    res |= intersects(planes, camPos + QVector3D(halfSize, -halfSize, -halfSize), adjSize) << 5;
+    res |= intersects(planes, camPos + QVector3D(-halfSize, -halfSize, halfSize), adjSize) << 6;
+    res |= intersects(planes, camPos + QVector3D(halfSize, -halfSize, halfSize), adjSize) << 7;
+
+    return res;
 }
