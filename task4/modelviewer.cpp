@@ -37,6 +37,8 @@
 #define setUniformVector3f(location, value) \
     glUniform3f(location, (GLfloat)value.x(), (GLfloat)value.y(), (GLfloat)value.z());
 
+#define CHECK_BIT(n, b) ((n) & (1 << (b)))
+
 ModelViewer::ModelViewer(const QGLFormat &fmt, QWidget *parent) : QGLWidget(new QGLContext(fmt), parent) {
     hAngle = 0;
     vAngle = 0;
@@ -66,6 +68,7 @@ ModelViewer::~ModelViewer() {
     glDeleteVertexArrays(1, &vertexArrayID);
     glDeleteBuffers(1, &particlesPosBuffer);
     glDeleteBuffers(1, &particlesSpeedBuffer);
+    glDeleteBuffers(2, particlesDelayBuffer);
     glDeleteTextures(1, &particleTexID);
 }
 
@@ -157,6 +160,7 @@ void ModelViewer::initParticles(size_t count, const QString &texPath) {
     if(psEnabled) {
         glDeleteBuffers(1, &particlesPosBuffer);
         glDeleteBuffers(1, &particlesSpeedBuffer);
+        glDeleteBuffers(2, particlesDelayBuffer);
         glDeleteTextures(1, &particleTexID);
     }
 
@@ -173,30 +177,72 @@ void ModelViewer::initParticles(size_t count, const QString &texPath) {
 void ModelViewer::generateParticles(int cubeSize) {
     psCubeSize = cubeSize;
     int halfSize = cubeSize / 2;
+    int quarterSize = cubeSize / 4;
 
     qsrand(QDateTime::currentMSecsSinceEpoch());
-    std::vector<GLfloat> vs;
-    std::vector<GLfloat> sp;
-    for(size_t i = 0; i < maxParticles; ++i) {
-        vs.push_back(qrand() % cubeSize - halfSize);        //pos x
-//        vs.push_back(qrand() % halfSize + halfSize / 2);    //pos y
-        vs.push_back(qrand() % (halfSize / 2) + halfSize);    //pos y
-//        vs.push_back(halfSize);    //pos y
-        vs.push_back(qrand() % cubeSize - halfSize);        //pos z
+
+    glGenBuffers(1, &particlesPosBuffer);
+    glGenBuffers(1, &particlesSpeedBuffer);
+    glGenBuffers(2, particlesDelayBuffer);
+
+    /*
+    for(int j = 0; j < 4; ++j) {
+        //generate particles for top octant
+        std::vector<GLfloat> vs;
+        std::vector<GLfloat> sp;
+        for(size_t i = 0; i < maxParticles / 4; ++i) {
+            vs.push_back(qrand() % halfSize - quarterSize);     //pos x
+            vs.push_back(quarterSize);                          //pos y
+            vs.push_back(qrand() % halfSize - quarterSize);     //pos z
+            vs.push_back(qrand() % 30 + 10);                    //size
+            sp.push_back((qrand() % 300 + 200.0) / 10000.0);    //speed range 0.02 .. 0.05
+            sp.push_back(qrand() % 20);                         //radius
+            sp.push_back(float(qrand() % 200) / 100000.0);      //freq
+            sp.push_back(0);                                    //delay
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer[j]);
+        glBufferData(GL_ARRAY_BUFFER, vs.size() * sizeof(GLfloat), &vs[0], GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer[j]);
+        glBufferData(GL_ARRAY_BUFFER, sp.size() * sizeof(GLfloat), &sp[0], GL_STATIC_DRAW);
+
+        //compute delay for bottom octant
+        for(size_t i = 3; i < vs.size(); i += 4) {
+            sp[i] = halfSize / sp[i - 3];
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer[j + 4]);
+        glBufferData(GL_ARRAY_BUFFER, vs.size() * sizeof(GLfloat), &vs[0], GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer[j + 4]);
+        glBufferData(GL_ARRAY_BUFFER, sp.size() * sizeof(GLfloat), &sp[0], GL_STATIC_DRAW);
+    }
+    */
+
+    std::vector<GLfloat> vs, sp, dl, bdl;
+    for(size_t i = 0; i < maxParticles / 4; ++i) {
+        vs.push_back(qrand() % halfSize - quarterSize);     //pos x
+        vs.push_back(quarterSize);                          //pos y
+        vs.push_back(qrand() % halfSize - quarterSize);     //pos z
         vs.push_back(qrand() % 30 + 10);                    //size
-//        vs.push_back(qrand() % 3 + 1.0);                    //size
         sp.push_back((qrand() % 300 + 200.0) / 10000.0);    //speed range 0.02 .. 0.05
         sp.push_back(qrand() % 20);                         //radius
         sp.push_back(float(qrand() % 200) / 100000.0);      //freq
+        dl.push_back(0);                                    //delay
     }
 
-    glGenBuffers(1, &particlesPosBuffer);
+    //compute delay for bottom octant
+    for(size_t i = 0; i < dl.size(); ++i) {
+        bdl.push_back(halfSize / sp[3 * i]);
+    }
+
     glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer);
     glBufferData(GL_ARRAY_BUFFER, vs.size() * sizeof(GLfloat), &vs[0], GL_STATIC_DRAW);
-
-    glGenBuffers(1, &particlesSpeedBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer);
     glBufferData(GL_ARRAY_BUFFER, sp.size() * sizeof(GLfloat), &sp[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, particlesDelayBuffer[0]);
+    glBufferData(GL_ARRAY_BUFFER, dl.size() * sizeof(GLfloat), &dl[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, particlesDelayBuffer[1]);
+    glBufferData(GL_ARRAY_BUFFER, bdl.size() * sizeof(GLfloat), &bdl[0], GL_STATIC_DRAW);
 
     psEnabled = true;
     startTime = QDateTime::currentMSecsSinceEpoch();
@@ -249,21 +295,10 @@ void ModelViewer::updateCameraPos(qint64 deltaTime) {
     default: changed = false; break;
     }
 
-//    switch(currentMoveDir) {
-//    case Forward: vCamera.pos += vCamera.dir * deltaTime * mspeed; break;
-//    case Backward: vCamera.pos -= vCamera.dir * deltaTime * mspeed; break;
-//    case Right: vCamera.pos += vCamera.right * deltaTime * mspeed; break;
-//    case Left: vCamera.pos -= vCamera.right * deltaTime * mspeed; break;
-//    default: changed = false; break;
-//    }
-
     if(changed) {
         mView.setToIdentity();
         mView.lookAt(cam.pos, cam.pos + cam.dir, cam.up);
-//        mView.lookAt(vCamera.pos, vCamera.pos + vCamera.dir, vCamera.up);
     }
-
-
 }
 
 void ModelViewer::updateCameraFrustum() {
@@ -274,17 +309,20 @@ void ModelViewer::updateCameraFrustum() {
 }
 
 void ModelViewer::findIntersectedOctants() {
-    /*
-    float cubeSize = 400.0;
-    int res = FrustumUtils::getIntersectionsAsInt(mProjection * mView, vCamera.pos, cubeSize / 2.0);
-
-    QVector<int> octs = FrustumUtils::getIntersections(mProjection * mView, vCamera.pos, cubeSize / 2.0);
-    std::cout << "Intersected octants " << octs.size() << ": ";
-    for(int j = 0; j < octs.size(); ++j) {
-        std::cout << octs[j] << " ";
+    int octs = FrustumUtils::getIntersections(mProjection * mView, vCamera.pos, psCubeSize / 2.0);
+    std::cout << "Intersected octants: ";
+    for(int i = 0; i < 8; ++i) {
+        if(CHECK_BIT(octs, i)) std::cout << i << " ";
     }
     std::cout << std::endl;
-    */
+}
+
+QVector3D ModelViewer::getShiftForOctant(int i) const {
+    int x = CHECK_BIT(i, 0) ? 1 : -1;
+    int y = CHECK_BIT(i, 2) ? -1 : 1;
+    int z = CHECK_BIT(i, 1) ? 1 : -1;
+    float size = psCubeSize / 4.0;
+    return QVector3D(size * x, size * y, size * z);
 }
 
 //----------------------------------------------------------------------------------------
@@ -328,7 +366,7 @@ void ModelViewer::initializeGL() {
     maxDistID = glGetUniformLocation(shaderProgramID, "maxDist");
     cubeSizeID = glGetUniformLocation(shaderProgramID, "cubeSize");
     psWireframeID = glGetUniformLocation(shaderProgramID, "wireframeMode");
-    octantsID = glGetUniformLocation(shaderProgramID, "octants");
+    shiftID = glGetUniformLocation(shaderProgramID, "constantShift");
 
     boxShaderProgramID = createShaders(":/shaders/boxVS.vsh", ":/shaders/boxFS.fsh");
     GLuint boxWireframeID = glGetUniformLocation(boxShaderProgramID, "wireframeMode");
@@ -383,13 +421,12 @@ void ModelViewer::paintGL() {
 
         QMatrix4x4 mVP = mProjection * mView;
 
-        QMatrix4x4 clipVP = currentCameraID == 0 ? mVP : pVP;
-        int octs = FrustumUtils::getIntersectionsAsInt(clipVP, vCamera.pos, psCubeSize / 2.0);
-        findIntersectedOctants();
+        const QMatrix4x4 &clipVP = currentCameraID == 0 ? mVP : pVP;
+        int octs = FrustumUtils::getIntersections(clipVP, vCamera.pos, psCubeSize / 2.0);
+//        findIntersectedOctants();
 
         glUseProgram(shaderProgramID);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         setUniformMatrix(glUniformMatrix4fv, vpMatrixID, mVP, 4, 4);
         setUniformVector3f(cameraRightID, vCamera.right);
         setUniformVector3f(cameraPosID, vCamera.pos);
@@ -399,39 +436,16 @@ void ModelViewer::paintGL() {
         glUniform2f(viewportSizeID, (GLfloat)this->size().width(), (GLfloat)this->size().height());
         glUniform1f(maxDistID, distThreshold);
         glUniform1f(cubeSizeID, psCubeSize);
-        glUniform1i(octantsID, octs);
-
-        glUniform1i(psWireframeID, 0);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, particleTexID);
         glUniform1i(texSamplerID, 0);
 
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer);
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        glDrawArrays(GL_POINTS, 0, maxParticles);
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-
-        if(showWireframe) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glUniform1i(psWireframeID, 1);
-
-            glEnableVertexAttribArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer);
-            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glEnableVertexAttribArray(1);
-            glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glEnable(GL_POLYGON_OFFSET_FILL);
-            glDrawArrays(GL_POINTS, 0, maxParticles);
-            glDisable(GL_POLYGON_OFFSET_FILL);
-            glDisableVertexAttribArray(0);
-            glDisableVertexAttribArray(1);
+        for(int i = 0; i < 8; ++i) {
+            if(!CHECK_BIT(octs, i)) continue;
+            setUniformVector3f(shiftID, getShiftForOctant(i));
+            renderParticleSystemPrecomp(false, i < 4);
+            if(showWireframe) renderParticleSystemPrecomp(true, i < 4);
         }
 
         if(currentCameraID > 0) {
@@ -440,6 +454,34 @@ void ModelViewer::paintGL() {
         }
     }
 
+}
+
+void ModelViewer::renderParticleSystemPrecomp(bool wireframe, bool top) {
+    if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glUniform1i(psWireframeID, wireframe ? 1 : 0);
+
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, particlesPosBuffer);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, particlesSpeedBuffer);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    glEnableVertexAttribArray(2);
+    if(top) glBindBuffer(GL_ARRAY_BUFFER, particlesDelayBuffer[0]);
+    else glBindBuffer(GL_ARRAY_BUFFER, particlesDelayBuffer[1]);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    if(wireframe) glEnable(GL_POLYGON_OFFSET_FILL);
+    glDrawArrays(GL_POINTS, 0, maxParticles / 4);
+    if(wireframe) glDisable(GL_POLYGON_OFFSET_FILL);
+
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
 }
 
 void ModelViewer::resizeGL(int width, int height) {

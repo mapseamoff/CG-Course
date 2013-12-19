@@ -24,8 +24,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     cubemapTex.append(QImage(":/textures/negZ.png").convertToFormat(QImage::Format_RGB888));
     cubemapTex.append(QImage(":/textures/posX.png").convertToFormat(QImage::Format_RGB888));
 
-//    CubemapTexture::splitStrip(":/textures/rnl_cross.png", 256);
-
     viewer = new ModelViewer(glFormat, this);    
     connect(viewer, SIGNAL(openGLInitialized()), this, SLOT(setTerrain()));
 
@@ -33,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     gbStaticOptions->setFlat(true);
 
     sbPCount = new QSpinBox(this);
-    sbPCount->setRange(1, 100000);
+    sbPCount->setRange(4, 100000);
     sbPCount->setSingleStep(50);
     sbPCount->setValue(10000);
 
@@ -140,7 +138,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     //--------------------------------------------------------------------------------
 
     QGroupBox *gbCameraOptions = new QGroupBox("Camera", this);
-    gbTerrainOptions->setFlat(true);
+    gbCameraOptions->setFlat(true);
 
     cbCameraMode = new QCheckBox("Single camera", this);
     cbCameraMode->setChecked(true);

@@ -66,14 +66,4 @@ void main() {
 
         EndPrimitive();
     }
-    /*else {
-        vec3 vertexPos = gl_in[0].gl_Position.xyz;
-        for(int i = 0; i < 3; ++i) {
-            gl_Position = VP * vec4(vertexPos, 1.0);
-            texCoord = vec2(0.0, 0.0);
-            ptcPos = vertexPos;
-            EmitVertex();
-        }
-        EndPrimitive();
-    }*/
 }

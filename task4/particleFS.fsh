@@ -13,7 +13,7 @@ uniform int wireframeMode;
 void main() {
     if(wireframeMode == 0) {
         color.rgb = texture(texSampler, texCoord).rgb;
-        float halfSize = cubeSize / 2;
+        float halfSize = cubeSize / 2.0 - 1.0;
         float dist = length(ptcPos - cameraPos);
 
         if(dist <= maxDist) {

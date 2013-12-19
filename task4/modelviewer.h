@@ -65,18 +65,22 @@ private:
     GLuint createShaders(const QString &vshFile, const QString &fshFile, const QString &gshFile = "") const;
     bool checkStatus(GLuint id, GLenum type, bool isShader = true) const;
 
+    void renderParticleSystemPrecomp(bool wireframe, bool top);
+
     void updateCameraPos(qint64 deltaTime);
     void updateCameraFrustum();
     void findIntersectedOctants();
     Camera &currentCamera();
 
-    GLuint particlesPosBuffer, particlesSpeedBuffer;
+    QVector3D getShiftForOctant(int i) const;
+
+    GLuint particlesPosBuffer, particlesSpeedBuffer, particlesDelayBuffer[2];
     GLuint particleTexID, vertexArrayID;
 
     GLuint shaderProgramID, vpMatrixID, texSamplerID;
     GLuint cameraPosID, cameraRightID, cameraUpID;
     GLuint viewportSizeID, billboardTypeID;
-    GLuint timeID, maxDistID, cubeSizeID, psWireframeID, octantsID;
+    GLuint timeID, maxDistID, cubeSizeID, psWireframeID, shiftID;
 
     GLfloat pNear, pFar;
     QMatrix4x4 mProjection, mModel, mView, pVP;

@@ -8,8 +8,7 @@
 
 class FrustumUtils {
 public:
-    static QVector<int> getIntersections(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize);
-    static int getIntersectionsAsInt(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize);
+    static int getIntersections(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize);
 
 private:
     static QVector<QVector4D> extractPlanes(const QMatrix4x4 &vp);

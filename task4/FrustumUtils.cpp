@@ -47,38 +47,6 @@ QVector<QVector4D> FrustumUtils::extractPlanes(const QMatrix4x4 &vp) {
     p_planes[5].c = vp(3, 2) - vp(2, 2);
     p_planes[5].d = vp(3, 3) - vp(2, 3);
 
-    /*
-    p_planes[0].a = vp(0, 3) + vp(0, 0);
-    p_planes[0].b = vp(1, 3) + vp(1, 0);
-    p_planes[0].c = vp(2, 3) + vp(2, 0);
-    p_planes[0].d = vp(3, 3) + vp(3, 0);
-    // Right clipping plane
-    p_planes[1].a = vp(0, 3) - vp(0, 0);
-    p_planes[1].b = vp(1, 3) - vp(1, 0);
-    p_planes[1].c = vp(2, 3) - vp(2, 0);
-    p_planes[1].d = vp(3, 3) - vp(3, 0);
-    // Top clipping plane
-    p_planes[2].a = vp(0, 3) - vp(0, 1);
-    p_planes[2].b = vp(1, 3) - vp(1, 1);
-    p_planes[2].c = vp(2, 3) - vp(2, 1);
-    p_planes[2].d = vp(3, 3) - vp(3, 1);
-    // Bottom clipping plane
-    p_planes[3].a = vp(0, 3) + vp(0, 1);
-    p_planes[3].b = vp(1, 3) + vp(1, 1);
-    p_planes[3].c = vp(2, 3) + vp(2, 1);
-    p_planes[3].d = vp(3, 3) + vp(3, 1);
-    // Near clipping plane
-    p_planes[4].a = vp(0, 3) + vp(0, 2);
-    p_planes[4].b = vp(1, 3) + vp(1, 2);
-    p_planes[4].c = vp(2, 3) + vp(2, 2);
-    p_planes[4].d = vp(3, 3) + vp(3, 2);
-    // Far clipping plane
-    p_planes[5].a = vp(0, 3) - vp(0, 2);
-    p_planes[5].b = vp(1, 3) - vp(1, 2);
-    p_planes[5].c = vp(2, 3) - vp(2, 2);
-    p_planes[5].d = vp(3, 3) - vp(3, 2);
-    */
-
     QVector<QVector4D> pl;
     for(int i = 0; i < 6; ++i) {
         normalizeFPlane(p_planes[i]);
@@ -97,36 +65,7 @@ bool FrustumUtils::intersects(const QVector<QVector4D> &pl, const QVector3D &pos
     return true;
 }
 
-QVector<int> FrustumUtils::getIntersections(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize) {
-    QVector<QVector4D> planes = extractPlanes(vp);
-
-    QVector<int> octs;
-    int i = 0;
-    float halfSize = cubeSize / 2.0;
-    float adjSize = halfSize - 0.1;
-
-    if(intersects(planes, camPos + QVector3D(-halfSize, halfSize, -halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(halfSize, halfSize, -halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(-halfSize, halfSize, halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(halfSize, halfSize, halfSize), adjSize)) octs.append(i);
-    ++i;
-
-    if(intersects(planes, camPos + QVector3D(-halfSize, -halfSize, -halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(halfSize, -halfSize, -halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(-halfSize, -halfSize, halfSize), adjSize)) octs.append(i);
-    ++i;
-    if(intersects(planes, camPos + QVector3D(halfSize, -halfSize, halfSize), adjSize)) octs.append(i);
-    ++i;
-
-    return octs;
-}
-
-int FrustumUtils::getIntersectionsAsInt(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize) {
+int FrustumUtils::getIntersections(const QMatrix4x4 &vp, const QVector3D &camPos, float cubeSize) {
     QVector<QVector4D> planes = extractPlanes(vp);
 
     int res = 0;
