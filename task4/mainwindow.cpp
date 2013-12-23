@@ -27,6 +27,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     viewer = new ModelViewer(glFormat, this);    
     connect(viewer, SIGNAL(openGLInitialized()), this, SLOT(setTerrain()));
 
+    //--------------------------------------------------------------------------------
+
     QGroupBox *gbStaticOptions = new QGroupBox("Static", this);
     gbStaticOptions->setFlat(true);
 
@@ -44,6 +46,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     sbTCSize->setRange(1, 400);
     sbTCSize->setSingleStep(1);
     sbTCSize->setValue(2);
+
+    QGridLayout *statLayout = new QGridLayout();
+    statLayout->setContentsMargins(0, 0, 0, 0);
+    statLayout->setSpacing(5);
+    statLayout->setColumnStretch(0, 0);
+    statLayout->setColumnStretch(1, 1);
+    statLayout->addWidget(new QLabel("Max particles:", this), 1, 0);
+    statLayout->addWidget(sbPCount, 1, 1);
+    statLayout->addWidget(new QLabel("Cube size:", this), 2, 0);
+    statLayout->addWidget(sbPSSize, 2, 1);
+    statLayout->addWidget(new QLabel("Terrain grid size:", this), 3, 0);
+    statLayout->addWidget(sbTCSize, 3, 1);
+    gbStaticOptions->setLayout(statLayout);
+
+    //--------------------------------------------------------------------------------
 
     QGroupBox *gbDynamicOptions = new QGroupBox("Dynamic", this);
     gbDynamicOptions->setFlat(true);
@@ -71,6 +88,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QPushButton *pbGenerate = new QPushButton("Generate", this);
     connect(pbGenerate, SIGNAL(clicked()), this, SLOT(generateParticles()));
 
+    QGridLayout *dynLayout = new QGridLayout();
+    dynLayout->setContentsMargins(0, 0, 0, 0);
+    dynLayout->setSpacing(5);
+    dynLayout->setColumnStretch(0, 0);
+    dynLayout->setColumnStretch(1, 1);
+    dynLayout->addWidget(new QLabel("Billboard type:", this), 0, 0);
+    dynLayout->addWidget(cbBType, 0, 1);
+    dynLayout->addWidget(new QLabel("Thres distance:", this), 1, 0);
+    dynLayout->addWidget(sbTDist, 1, 1);
+    dynLayout->addWidget(cbShowTerrain, 2, 0, 1, 2);
+    dynLayout->addWidget(cbShowWireframe, 3, 0, 1, 2);
+    dynLayout->addWidget(pbGenerate, 4, 0, 1, 2);
+    gbDynamicOptions->setLayout(dynLayout);
+
     //--------------------------------------------------------------------------------
 
     QGroupBox *gbTerrainOptions = new QGroupBox("Terrain", this);
@@ -84,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QComboBox *cbTerrainMode = new QComboBox(this);
     cbTerrainMode->addItem("texture");
+    cbTerrainMode->addItem("normal");
     cbTerrainMode->addItem("facet norm.");
     cbTerrainMode->addItem("vertex norm.");
     connect(cbTerrainMode, SIGNAL(currentIndexChanged(int)), viewer, SLOT(setTerrainTexMode(int)));
@@ -156,9 +188,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     camLayout->addWidget(cbCameraMode, 0, 0, 1, 2);
     camLayout->addWidget(new QLabel("Camera:", this), 1, 0);
     camLayout->addWidget(cbCurrentCamera, 1, 1);
-
     gbCameraOptions->setLayout(camLayout);
-
 
     //--------------------------------------------------------------------------------
 
@@ -169,26 +199,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     optLayout->setColumnStretch(0, 0);
     optLayout->setColumnStretch(1, 1);
     optLayout->addWidget(gbStaticOptions, 0, 0, 1, 2);
-    optLayout->addWidget(new QLabel("Max particles:", this), 1, 0);
-    optLayout->addWidget(sbPCount, 1, 1);
-    optLayout->addWidget(new QLabel("Cube size:", this), 2, 0);
-    optLayout->addWidget(sbPSSize, 2, 1);
-    optLayout->addWidget(new QLabel("Terrain grid size:", this), 3, 0);
-    optLayout->addWidget(sbTCSize, 3, 1);
+    optLayout->addWidget(gbDynamicOptions, 1, 0, 1, 2);
+    optLayout->addWidget(gbTerrainOptions, 3, 0, 1, 2);
+    optLayout->addWidget(gbCameraOptions, 4, 0, 1, 2);
 
-    optLayout->addWidget(gbDynamicOptions, 4, 0, 1, 2);
-    optLayout->addWidget(new QLabel("Billboard type:", this), 5, 0);
-    optLayout->addWidget(cbBType, 5, 1);
-    optLayout->addWidget(new QLabel("Thres distance:", this), 6, 0);
-    optLayout->addWidget(sbTDist, 6, 1);
-    optLayout->addWidget(cbShowTerrain, 7, 0, 1, 2);
-    optLayout->addWidget(cbShowWireframe, 8, 0, 1, 2);
-
-    optLayout->addWidget(pbGenerate, 9, 0, 1, 2);
-    optLayout->addWidget(gbTerrainOptions, 11, 0, 1, 2);
-    optLayout->addWidget(gbCameraOptions, 12, 0, 1, 2);
-
-    optLayout->setRowStretch(10, 1);
+    optLayout->setRowStretch(2, 1);
     gbOptions->setLayout(optLayout);
 
     QWidget *w = new QWidget(this);
