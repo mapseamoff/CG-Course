@@ -22,7 +22,6 @@ SOURCES += \
     modelviewer.cpp \
     mainwindow.cpp \
     main.cpp \
-    colorpicker.cpp \
     terrain.cpp \
     objmodel.cpp \
     FrustumUtils.cpp
@@ -30,7 +29,6 @@ SOURCES += \
 HEADERS  += \
     modelviewer.h \
     mainwindow.h \
-    colorpicker.h \
     terrain.h \
     objmodel.h \
     FrustumUtils.h

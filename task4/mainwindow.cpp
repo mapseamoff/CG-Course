@@ -17,13 +17,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     glFormat.setProfile(QGLFormat::CoreProfile);
     glFormat.setSampleBuffers(true);
 
-    cubemapTex.append(QImage(":/textures/posZ.png").convertToFormat(QImage::Format_RGB888));
-    cubemapTex.append(QImage(":/textures/negX.png").convertToFormat(QImage::Format_RGB888));
-    cubemapTex.append(QImage(":/textures/posY.png").convertToFormat(QImage::Format_RGB888));
-    cubemapTex.append(QImage(":/textures/negY.png").convertToFormat(QImage::Format_RGB888));
-    cubemapTex.append(QImage(":/textures/negZ.png").convertToFormat(QImage::Format_RGB888));
-    cubemapTex.append(QImage(":/textures/posX.png").convertToFormat(QImage::Format_RGB888));
-
     viewer = new ModelViewer(glFormat, this);    
     connect(viewer, SIGNAL(openGLInitialized()), this, SLOT(setTerrain()));
 
@@ -109,8 +102,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     cbTerrainTexture = new QComboBox(this);
     cbTerrainTexture->addItem("texture 1");
-    cbTerrainTexture->addItem("nvidia sdk");
-    cbTerrainTexture->addItem("bad cubemap");
     connect(cbTerrainTexture, SIGNAL(currentIndexChanged(int)), this, SLOT(setTerrainTexture(int)));
 
     QComboBox *cbTerrainMode = new QComboBox(this);
@@ -230,8 +221,6 @@ void MainWindow::generateParticles() {
 void MainWindow::setTerrainTexture(int idx) {
     switch(idx) {
     case 0: viewer->setTerrainBox(":/textures/skybox1.png"); break;
-    case 1: viewer->setTerrainBox(cubemapTex); break;
-    case 2: viewer->setTerrainBox(":/textures/skybox2.jpg"); break;
     default: break;
     }
 }

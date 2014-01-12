@@ -11,15 +11,8 @@
         <file>modelVS.vsh</file>
     </qresource>
     <qresource prefix="/textures">
-        <file>skybox2.jpg</file>
         <file>skybox1.png</file>
         <file>snowflakes.jpg</file>
-        <file>negX.png</file>
-        <file>negY.png</file>
-        <file>negZ.png</file>
-        <file>posX.png</file>
-        <file>posY.png</file>
-        <file>posZ.png</file>
     </qresource>
     <qresource prefix="/models">
         <file>frustum.obj</file>

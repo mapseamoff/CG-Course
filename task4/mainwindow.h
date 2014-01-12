@@ -36,8 +36,6 @@ private:
 
     QCheckBox *cbCameraMode;
     QComboBox *cbCurrentCamera;
-
-    QList<QImage> cubemapTex;
 };
 
 #endif // MAINWINDOW_H
